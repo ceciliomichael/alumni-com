@@ -85,16 +85,22 @@ const RegisterPage = () => {
     return (
       <div className="auth-container">
         <div className="auth-wrapper">
-          <div className="auth-card success-card">
-            <div className="success-icon">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="32" cy="32" r="32" fill="#10b981" fillOpacity="0.1" />
-                <path d="M20 32L28 40L44 24" stroke="#10b981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+          <div className="auth-card">
+            <div className="auth-logo">
+              <img src="/images/alumni-conlogo.png" alt="IMA Alumni Logo" />
             </div>
-            <h2>Registration Successful!</h2>
-            <p>Your registration has been submitted successfully. Please wait for the admin or batch president approval.</p>
-            <Link to="/login" className="btn btn-primary">Back to Login</Link>
+            
+            <div className="success-card">
+              <div className="success-icon">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="40" cy="40" r="40" fill="#10b981" fillOpacity="0.1" />
+                  <path d="M25 40L35 50L55 30" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h2>Registration Successful!</h2>
+              <p>Your registration has been submitted successfully. Please wait for the admin or batch president approval.</p>
+              <Link to="/login" className="btn btn-primary">Back to Login</Link>
+            </div>
           </div>
         </div>
       </div>
@@ -105,125 +111,131 @@ const RegisterPage = () => {
     <div className="auth-container">
       <div className="auth-wrapper">
         <div className="auth-card">
-          <div className="auth-header">
-            <h1 className="auth-title">
-              <UserPlus className="auth-icon" />
-              Register for AlumniCom
-            </h1>
-            <p className="auth-subtitle">Create your account to connect with fellow alumni</p>
+          <div className="auth-logo">
+            <img src="/images/alumni-conlogo.png" alt="IMA Alumni Logo" />
           </div>
           
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">Full Name</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <User size={18} />
+          <div className="auth-form-container">
+            <div className="auth-header">
+              <h1 className="auth-title">
+                <UserPlus className="auth-icon" />
+                Register for IMA Alumni
+              </h1>
+              <p className="auth-subtitle">Create your account to connect with fellow alumni</p>
+            </div>
+            
+            <form className="auth-form" onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">Full Name</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <User size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    className={`form-control ${errors.name ? 'error' : ''}`}
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  className={`form-control ${errors.name ? 'error' : ''}`}
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                />
+                {errors.name && <div className="form-error">{errors.name}</div>}
               </div>
-              {errors.name && <div className="form-error">{errors.name}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="email" className="form-label">Email Address</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <Mail size={18} />
+              
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    className={`form-control ${errors.email ? 'error' : ''}`}
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  className={`form-control ${errors.email ? 'error' : ''}`}
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
+                {errors.email && <div className="form-error">{errors.email}</div>}
               </div>
-              {errors.email && <div className="form-error">{errors.email}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="batch" className="form-label">Batch Year</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <GraduationCap size={18} />
+              
+              <div className="form-group">
+                <label htmlFor="batch" className="form-label">Batch Year</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <GraduationCap size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    id="batch"
+                    name="batch"
+                    className={`form-control ${errors.batch ? 'error' : ''}`}
+                    placeholder="Enter your batch year (e.g., 2020)"
+                    value={formData.batch}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="text"
-                  id="batch"
-                  name="batch"
-                  className={`form-control ${errors.batch ? 'error' : ''}`}
-                  placeholder="Enter your batch year (e.g., 2020)"
-                  value={formData.batch}
-                  onChange={handleChange}
-                />
+                {errors.batch && <div className="form-error">{errors.batch}</div>}
               </div>
-              {errors.batch && <div className="form-error">{errors.batch}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">Password</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <Lock size={18} />
+              
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">Password</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    className={`form-control ${errors.password ? 'error' : ''}`}
+                    placeholder="Create a password"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  className={`form-control ${errors.password ? 'error' : ''}`}
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
+                {errors.password && <div className="form-error">{errors.password}</div>}
               </div>
-              {errors.password && <div className="form-error">{errors.password}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <Lock size={18} />
+              
+              <div className="form-group">
+                <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    className={`form-control ${errors.confirmPassword ? 'error' : ''}`}
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  className={`form-control ${errors.confirmPassword ? 'error' : ''}`}
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                />
+                {errors.confirmPassword && <div className="form-error">{errors.confirmPassword}</div>}
               </div>
-              {errors.confirmPassword && <div className="form-error">{errors.confirmPassword}</div>}
-            </div>
-            
-            <button
-              type="submit"
-              className="btn btn-primary register-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Registering...' : 'Create Account'}
-            </button>
-            
-            <div className="auth-footer">
-              <p>
-                Already have an account?{' '}
-                <Link to="/login" className="auth-link">Login</Link>
-              </p>
-            </div>
-          </form>
+              
+              <button
+                type="submit"
+                className="btn btn-primary register-btn"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Registering...' : 'Create Account'}
+              </button>
+              
+              <div className="auth-footer">
+                <p>
+                  Already have an account?{' '}
+                  <Link to="/login" className="auth-link">Login</Link>
+                </p>
+              </div>
+            </form>
+          </div>
         </div>
         
         <div className="auth-illustration">

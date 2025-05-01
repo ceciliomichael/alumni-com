@@ -1,6 +1,6 @@
-# AlumniCom - Alumni Community Platform
+# IMA Alumni - Alumni Community Platform
 
-AlumniCom is a modern web platform designed to connect alumni from educational institutions. This application helps graduates stay connected, share updates, view events, and access job opportunities related to their alumni community.
+IMA Alumni is a modern web platform designed to connect alumni from educational institutions. This application helps graduates stay connected, share updates, view events, and access job opportunities related to their alumni community.
 
 ## Features
 

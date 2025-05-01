@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { User } from '../../types';
-import { LogIn, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { LogIn, Mail, Lock } from 'lucide-react';
 import './Auth.css';
 
 interface LoginPageProps {
@@ -12,15 +12,16 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    rememberMe: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
     
     // Clear error when user starts typing
@@ -77,71 +78,90 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
     <div className="auth-container">
       <div className="auth-wrapper">
         <div className="auth-card">
-          <div className="auth-header">
-            <h1 className="auth-title">
-              <LogIn className="auth-icon" />
-              Login to AlumniCom
-            </h1>
-            <p className="auth-subtitle">Welcome back! Please login to your account.</p>
+          <div className="auth-logo">
+            <img src="/images/alumni-conlogo.png" alt="IMA Alumni Logo" />
           </div>
           
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="email" className="form-label">Email Address</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <Mail size={18} />
+          <div className="auth-form-container">
+            <div className="auth-header">
+              <h1 className="auth-title">
+                <LogIn className="auth-icon" />
+                Login to IMA Alumni
+              </h1>
+              <p className="auth-subtitle">Welcome back! Please login to your account.</p>
+            </div>
+            
+            <form className="auth-form" onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    className={`form-control ${errors.email ? 'error' : ''}`}
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  className={`form-control ${errors.email ? 'error' : ''}`}
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
+                {errors.email && <div className="form-error">{errors.email}</div>}
               </div>
-              {errors.email && <div className="form-error">{errors.email}</div>}
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">Password</label>
-              <div className="input-group">
-                <div className="input-icon">
-                  <Lock size={18} />
+              
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">Password</label>
+                <div className="input-group">
+                  <div className="input-icon">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    className={`form-control ${errors.password ? 'error' : ''}`}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
                 </div>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  className={`form-control ${errors.password ? 'error' : ''}`}
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
+                {errors.password && <div className="form-error">{errors.password}</div>}
               </div>
-              {errors.password && <div className="form-error">{errors.password}</div>}
-              <div className="forgot-password">
-                <Link to="/forgot-password">Forgot Password?</Link>
+              
+              <div className="form-options">
+                <div className="checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="rememberMe" 
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                  />
+                  <label htmlFor="rememberMe">Remember me</label>
+                </div>
+                <div className="forgot-password">
+                  <Link to="/forgot-password">Forgot Password?</Link>
+                </div>
               </div>
-            </div>
-            
-            <button 
-              type="submit" 
-              className="btn btn-primary login-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Logging in...' : 'Login to Account'}
-            </button>
-            
-            <div className="auth-footer">
-              <p>
-                Don't have an account?{' '}
-                <Link to="/register" className="auth-link">Register</Link>
-              </p>
-            </div>
-          </form>
+              
+              <button 
+                type="submit" 
+                className="btn btn-primary login-btn"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Logging in...' : 'Login to Account'}
+              </button>
+              
+              <div className="auth-footer">
+                <p>
+                  Don't have an account?{' '}
+                  <Link to="/register" className="auth-link">Register</Link>
+                </p>
+              </div>
+            </form>
+          </div>
         </div>
         
         <div className="auth-illustration">

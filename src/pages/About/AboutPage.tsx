@@ -250,7 +250,7 @@ const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
                         <div className="contact-details">
                           <h3>Email Us</h3>
                           <p>alumni@university.edu</p>
-                          <p>support@alumniconnect.com</p>
+                          <p>support@IMA Alumni.com</p>
                         </div>
                       </div>
                       

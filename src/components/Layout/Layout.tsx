@@ -37,7 +37,7 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
       <header className="header">
         <div className="container header-container">
           <div className="logo-container">
-            <Link to="/" className="logo">AlumniConnect</Link>
+            <Link to="/" className="logo">IMA Alumni</Link>
           </div>
 
           <button className="mobile-menu-button" onClick={toggleMobileMenu}>
@@ -136,7 +136,7 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
 
       <footer className="footer">
         <div className="container">
-          <p>&copy; {new Date().getFullYear()} AlumniConnect. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} IMA Alumni. All rights reserved.</p>
         </div>
       </footer>
     </div>
