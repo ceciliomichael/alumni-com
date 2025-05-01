@@ -1,301 +1,295 @@
 import { useState, useEffect } from 'react';
-import { Info, FileText, Users, MapPin, Mail, Phone, Globe } from 'lucide-react';
+import { Info, FileText, Users, MapPin, Mail, Phone, Building, ChevronRight } from 'lucide-react';
 import ImagePlaceholder from '../../components/ImagePlaceholder';
 import './About.css';
 
 type TabType = 'history' | 'vision' | 'organization' | 'contact';
 
-interface AboutPageProps {
-  initialTab?: TabType;
-}
-
-interface TimelineItem {
-  year: string;
-  title: string;
-  description: string;
-}
-
-interface MissionItem {
-  title: string;
-  description: string;
-}
-
-interface OrgPosition {
-  title: string;
-  name: string;
-  batch: string;
-}
-
-interface ContactItem {
-  type: 'address' | 'email' | 'phone' | 'social';
-  icon: React.ReactNode;
-  title: string;
-  details: string[];
-}
-
-const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+const AboutPage = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('history');
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Update active tab when initialTab prop changes
+  // Simulate loading state on initial load
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
-  
-  // These state variables would be populated from backend in a real app
-  const [historyItems, setHistoryItems] = useState<TimelineItem[]>([]);
-  const [visionText, setVisionText] = useState<string[]>([]);
-  const [missionItems, setMissionItems] = useState<MissionItem[]>([]);
-  const [orgPositions, setOrgPositions] = useState<{
-    president: OrgPosition | null;
-    vicePresident: OrgPosition | null;
-    executives: OrgPosition[];
-    officers: OrgPosition[];
-  }>({
-    president: null,
-    vicePresident: null,
-    executives: [],
-    officers: []
-  });
-  const [contactItems, setContactItems] = useState<ContactItem[]>([]);
-  
+    setIsLoading(true);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Placeholder data for org chart
+  const organizationData = {
+    president: {
+      title: "President",
+      name: "James Rodriguez",
+      batch: "2005"
+    },
+    vicePresident: {
+      title: "Vice President",
+      name: "Sarah Johnson",
+      batch: "2008"
+    },
+    executives: [
+      { title: "Secretary", name: "Mark Williams", batch: "2010" },
+      { title: "Treasurer", name: "Lisa Chen", batch: "2012" },
+      { title: "Public Relations", name: "David Kim", batch: "2015" }
+    ]
+  };
+
   return (
-    <div className="about-container">
-      <div className="about-header">
-        <div className="about-title">
-          <Info size={24} />
-          <h1>About Us</h1>
+    <div className="about-page">
+      <div className="about-layout">
+        <div className="about-content">
+          <div className="about-header">
+            <div className="about-title-section">
+              <div className="about-icon">
+                <Info size={24} />
+              </div>
+              <h1>About Us</h1>
+            </div>
+          </div>
+          
+          <div className="about-tabs">
+            <button 
+              className={`about-tab ${activeTab === 'history' ? 'active' : ''}`}
+              onClick={() => setActiveTab('history')}
+            >
+              <FileText size={18} />
+              <span>History</span>
+            </button>
+            <button 
+              className={`about-tab ${activeTab === 'vision' ? 'active' : ''}`}
+              onClick={() => setActiveTab('vision')}
+            >
+              <Info size={18} />
+              <span>Vision & Mission</span>
+            </button>
+            <button 
+              className={`about-tab ${activeTab === 'organization' ? 'active' : ''}`}
+              onClick={() => setActiveTab('organization')}
+            >
+              <Building size={18} />
+              <span>Organizational Chart</span>
+            </button>
+            <button 
+              className={`about-tab ${activeTab === 'contact' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contact')}
+            >
+              <Mail size={18} />
+              <span>Contact Us</span>
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="loading-about">
+              <div className="about-skeleton"></div>
+            </div>
+          ) : (
+            <div className="about-tab-content">
+              {activeTab === 'history' && (
+                <div className="history-section">
+                  <h2>Our History</h2>
+                  <div className="history-content">
+                    <div className="history-image">
+                      <ImagePlaceholder
+                        shape="rectangle"
+                        height="300px"
+                        color="#4f46e5"
+                        recommendedSize="1200x400px"
+                        text="Alumni History"
+                      />
+                    </div>
+                    
+                    <div className="history-timeline">
+                      <div className="timeline">
+                        {[2000, 2005, 2010, 2015, 2020, 2023].map((year, index) => (
+                          <div key={index} className="timeline-item">
+                            <div className="timeline-marker">
+                              <div className="timeline-dot"></div>
+                            </div>
+                            <div className="timeline-year">{year}</div>
+                            <div className="timeline-card">
+                              <h3>Major Milestone {index + 1}</h3>
+                              <p>This is a placeholder for historical information about our alumni association. We'll add real content about our founding, growth, and achievements soon.</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeTab === 'vision' && (
+                <div className="vision-section">
+                  <h2>Vision & Mission</h2>
+                  <div className="vision-mission-content">
+                    <div className="vision-card">
+                      <div className="vm-card-header">
+                        <h3>Our Vision</h3>
+                      </div>
+                      <div className="vm-card-body">
+                        <p>To be the premier alumni network that fosters lifelong connections, professional growth, and meaningful contributions to our alma mater and society.</p>
+                        <p>We envision a vibrant community of alumni who remain connected to their educational roots while advancing in their respective fields and making positive impacts in their communities.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mission-card">
+                      <div className="vm-card-header">
+                        <h3>Our Mission</h3>
+                      </div>
+                      <div className="vm-card-body">
+                        <div className="mission-points">
+                          <div className="mission-point">
+                            <div className="mission-point-marker">1</div>
+                            <div className="mission-point-content">
+                              <h4>Foster Connections</h4>
+                              <p>Create opportunities for meaningful networking and relationship-building among alumni of all generations.</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mission-point">
+                            <div className="mission-point-marker">2</div>
+                            <div className="mission-point-content">
+                              <h4>Support Career Development</h4>
+                              <p>Provide resources, mentorship, and professional development opportunities to help alumni thrive in their careers.</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mission-point">
+                            <div className="mission-point-marker">3</div>
+                            <div className="mission-point-content">
+                              <h4>Give Back</h4>
+                              <p>Facilitate meaningful ways for alumni to contribute to the success of current students and the institution.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeTab === 'organization' && (
+                <div className="organization-section">
+                  <h2>Organizational Chart</h2>
+                  <div className="org-chart-content">
+                    <div className="org-chart">
+                      <div className="org-level president-level">
+                        <div className="org-card president-card">
+                          <div className="org-position">President</div>
+                          <div className="org-name">{organizationData.president.name}</div>
+                          <div className="org-batch">Class of {organizationData.president.batch}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="org-connector"></div>
+                      
+                      <div className="org-level vp-level">
+                        <div className="org-card vp-card">
+                          <div className="org-position">Vice President</div>
+                          <div className="org-name">{organizationData.vicePresident.name}</div>
+                          <div className="org-batch">Class of {organizationData.vicePresident.batch}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="org-connector"></div>
+                      
+                      <div className="org-level exec-level">
+                        {organizationData.executives.map((exec, index) => (
+                          <div key={index} className="org-card exec-card">
+                            <div className="org-position">{exec.title}</div>
+                            <div className="org-name">{exec.name}</div>
+                            <div className="org-batch">Class of {exec.batch}</div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="org-note">
+                        <p>This organizational chart is a placeholder. The actual structure and members will be updated soon.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeTab === 'contact' && (
+                <div className="contact-section">
+                  <h2>Contact Us</h2>
+                  <div className="contact-content">
+                    <div className="contact-info">
+                      <div className="contact-card">
+                        <div className="contact-icon">
+                          <MapPin size={24} />
+                        </div>
+                        <div className="contact-details">
+                          <h3>Visit Us</h3>
+                          <p>123 University Avenue</p>
+                          <p>Main Campus, Alumni Center</p>
+                          <p>New York, NY 10001</p>
+                        </div>
+                      </div>
+                      
+                      <div className="contact-card">
+                        <div className="contact-icon">
+                          <Mail size={24} />
+                        </div>
+                        <div className="contact-details">
+                          <h3>Email Us</h3>
+                          <p>alumni@university.edu</p>
+                          <p>support@alumniconnect.com</p>
+                        </div>
+                      </div>
+                      
+                      <div className="contact-card">
+                        <div className="contact-icon">
+                          <Phone size={24} />
+                        </div>
+                        <div className="contact-details">
+                          <h3>Call Us</h3>
+                          <p>Main Office: (123) 456-7890</p>
+                          <p>Support Hotline: (123) 456-7891</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="contact-form-container">
+                      <h3>Send Us a Message</h3>
+                      <form className="contact-form">
+                        <div className="form-group">
+                          <label htmlFor="name">Full Name</label>
+                          <input type="text" id="name" placeholder="Enter your name" />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="email">Email Address</label>
+                          <input type="email" id="email" placeholder="Enter your email" />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="subject">Subject</label>
+                          <input type="text" id="subject" placeholder="What is this regarding?" />
+                        </div>
+                        
+                        <div className="form-group">
+                          <label htmlFor="message">Message</label>
+                          <textarea id="message" rows={5} placeholder="Type your message here"></textarea>
+                        </div>
+                        
+                        <button type="submit" className="send-button">
+                          <span>Send Message</span>
+                          <ChevronRight size={16} />
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </div>
-      
-      <div className="about-tabs">
-        <button 
-          className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          <FileText size={18} />
-          <span>History</span>
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'vision' ? 'active' : ''}`}
-          onClick={() => setActiveTab('vision')}
-        >
-          <Globe size={18} />
-          <span>Vision &amp; Mission</span>
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'organization' ? 'active' : ''}`}
-          onClick={() => setActiveTab('organization')}
-        >
-          <Users size={18} />
-          <span>Organizational Chart</span>
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'contact' ? 'active' : ''}`}
-          onClick={() => setActiveTab('contact')}
-        >
-          <Mail size={18} />
-          <span>Contact Us</span>
-        </button>
-      </div>
-      
-      <div className="about-content">
-        {activeTab === 'history' && (
-          <div className="history-section">
-            <h2>Our History</h2>
-            <div className="history-image">
-              <ImagePlaceholder
-                shape="rectangle"
-                height="300px"
-                color="#3498db"
-                recommendedSize="1200x400px"
-                text="Alumni History"
-              />
-            </div>
-            
-            {historyItems.length > 0 ? (
-              <div className="history-timeline">
-                {historyItems.map((item, index) => (
-                  <div key={index} className="timeline-item">
-                    <div className="timeline-year">{item.year}</div>
-                    <div className="timeline-content">
-                      <h3>{item.title}</h3>
-                      <p>{item.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-timeline">
-                <div className="placeholder-timeline">
-                  {[2010, 2015, 2020, 2023].map((year, index) => (
-                    <div key={index} className="timeline-item">
-                      <div className="timeline-year">{year}</div>
-                      <div className="timeline-content">
-                        <ImagePlaceholder
-                          shape="rectangle"
-                          width="100%"
-                          height="120px"
-                          color={index % 2 === 0 ? "#e74c3c" : "#2ecc71"}
-                          recommendedSize="800x300px"
-                        />
-                        <h3>History Milestone {index + 1}</h3>
-                        <p>Historical information will be available here. This section will show the important events and milestones in our alumni association's timeline.</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {activeTab === 'vision' && (
-          <div className="vision-section">
-            <div className="vision-block">
-              <h2>Our Vision</h2>
-              {visionText.length > 0 ? (
-                <div className="vision-content">
-                  {visionText.map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <p>Our vision statement will be available soon.</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="mission-block">
-              <h2>Our Mission</h2>
-              {missionItems.length > 0 ? (
-                <div className="mission-content">
-                  {missionItems.map((item, index) => (
-                    <div key={index} className="mission-item">
-                      <h3>{item.title}</h3>
-                      <p>{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <p>Our mission details will be available soon.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'organization' && (
-          <div className="organization-section">
-            <h2>Organizational Structure</h2>
-            <p className="org-intro">Our alumni association is structured to ensure efficient operations and comprehensive representation of all batches and interest groups.</p>
-            
-            {orgPositions.president || orgPositions.vicePresident || orgPositions.executives.length > 0 || orgPositions.officers.length > 0 ? (
-              <div className="org-chart">
-                {orgPositions.president && (
-                  <div className="org-level">
-                    <div className="org-position president">
-                      <h3>{orgPositions.president.title}</h3>
-                      <p>{orgPositions.president.name} (Batch {orgPositions.president.batch})</p>
-                    </div>
-                  </div>
-                )}
-                
-                {orgPositions.vicePresident && (
-                  <div className="org-level">
-                    <div className="org-position">
-                      <h3>{orgPositions.vicePresident.title}</h3>
-                      <p>{orgPositions.vicePresident.name} (Batch {orgPositions.vicePresident.batch})</p>
-                    </div>
-                  </div>
-                )}
-                
-                {orgPositions.executives.length > 0 && (
-                  <div className="org-level three-columns">
-                    {orgPositions.executives.map((exec, index) => (
-                      <div key={index} className="org-position">
-                        <h3>{exec.title}</h3>
-                        <p>{exec.name} (Batch {exec.batch})</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {orgPositions.officers.length > 0 && (
-                  <div className="org-level four-columns">
-                    {orgPositions.officers.map((officer, index) => (
-                      <div key={index} className="org-position">
-                        <h3>{officer.title}</h3>
-                        <p>{officer.name} (Batch {officer.batch})</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <p>Organization chart information will be available soon.</p>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {activeTab === 'contact' && (
-          <div className="contact-section">
-            <h2>Contact Us</h2>
-            <p className="contact-intro">We'd love to hear from you! Get in touch with the Alumni Association through any of the channels below.</p>
-            
-            {contactItems.length > 0 ? (
-              <div className="contact-grid">
-                {contactItems.map((item, index) => (
-                  <div key={index} className="contact-card">
-                    <div className="contact-icon">
-                      {item.icon}
-                    </div>
-                    <h3>{item.title}</h3>
-                    {item.details.map((detail, i) => (
-                      <p key={i}>{detail}</p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <p>Contact information will be available soon.</p>
-              </div>
-            )}
-            
-            <div className="contact-form-section">
-              <h3>Send us a Message</h3>
-              <form className="contact-form">
-                <div className="form-group">
-                  <label htmlFor="name">Name</label>
-                  <input type="text" id="name" name="name" placeholder="Your name" required />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="email">Email</label>
-                  <input type="email" id="email" name="email" placeholder="Your email" required />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="subject">Subject</label>
-                  <input type="text" id="subject" name="subject" placeholder="Message subject" required />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="message">Message</label>
-                  <textarea id="message" name="message" rows={5} placeholder="Your message" required></textarea>
-                </div>
-                
-                <button type="submit" className="send-message-btn">Send Message</button>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
