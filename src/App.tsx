@@ -7,6 +7,8 @@ import GalleryPage from './pages/Gallery/GalleryPage';
 import EventsPage from './pages/Events/EventsPage';
 import AboutPage from './pages/About/AboutPage';
 import ProfilePage from './pages/Profile/ProfilePage';
+import JobsPage from './pages/Jobs/JobsPage';
+import NotificationsPage from './pages/Notifications/NotificationsPage';
 import Layout from './components/Layout/Layout';
 import { User } from './types';
 
@@ -105,6 +107,20 @@ function App() {
         <Route path="/profile/update" element={
           <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
             {isAuthenticated ? <ProfilePage user={user} isEditing={true} /> : <Navigate to="/login" />}
+          </Layout>
+        } />
+        
+        {/* Jobs Section - New */}
+        <Route path="/jobs" element={
+          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
+            {isAuthenticated ? <JobsPage /> : <Navigate to="/login" />}
+          </Layout>
+        } />
+        
+        {/* Notifications Section - New */}
+        <Route path="/notifications" element={
+          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
+            {isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />}
           </Layout>
         } />
         

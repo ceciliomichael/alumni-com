@@ -5,9 +5,20 @@ import './About.css';
 
 type TabType = 'history' | 'vision' | 'organization' | 'contact';
 
-const AboutPage = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('history');
+interface AboutPageProps {
+  initialTab?: TabType;
+}
+
+const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   
   // Simulate loading state on initial load
   useEffect(() => {

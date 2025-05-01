@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { User } from '../../types';
-import { Home, Users, Image, Calendar, Info, Bell, LogOut, Menu, X, User as UserIcon } from 'lucide-react';
+import { Home, Users, Image, Calendar, Info, Bell, LogOut, Menu, X, User as UserIcon, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 import './Layout.css';
 
@@ -14,6 +14,7 @@ interface LayoutProps {
 
 const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -46,22 +47,47 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
           <nav className={`nav-menu ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
             <ul className="nav-list">
               <li className="nav-item">
-                <Link to="/" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link 
+                  to="/" 
+                  className={`nav-link ${location.pathname === '/' ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   <Home size={18} /> Home
                 </Link>
               </li>
               <li className="nav-item">
-                <Link to="/gallery" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link 
+                  to="/gallery" 
+                  className={`nav-link ${location.pathname.includes('/gallery') ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   <Image size={18} /> Gallery
                 </Link>
               </li>
               <li className="nav-item">
-                <Link to="/events" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link 
+                  to="/events" 
+                  className={`nav-link ${location.pathname.includes('/events') ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   <Calendar size={18} /> Events
                 </Link>
               </li>
               <li className="nav-item">
-                <Link to="/about" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                <Link 
+                  to="/jobs" 
+                  className={`nav-link ${location.pathname.includes('/jobs') ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Briefcase size={18} /> Jobs
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link 
+                  to="/about" 
+                  className={`nav-link ${location.pathname.includes('/about') ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
                   <Info size={18} /> About Us
                 </Link>
               </li>
@@ -70,7 +96,9 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
 
           <div className="user-menu">
             <div className="notification-icon">
-              <Bell size={20} />
+              <Link to="/notifications" className="notification-button" title="Notifications">
+                <Bell size={20} />
+              </Link>
             </div>
             <div className="user-profile">
               <div className="user-avatar">

@@ -61,4 +61,13 @@ export interface Job {
   contactEmail: string;
   postedBy: string;
   createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  type: 'event' | 'job' | 'mention' | 'system';
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
 } 

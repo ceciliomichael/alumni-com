@@ -1,4 +1,4 @@
-import { User, UserCircle, Users, Calendar, Briefcase, Bell, BookOpen, Building, Settings } from 'lucide-react';
+import { User, UserCircle, Users, Calendar, Briefcase, BookOpen, Building, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { User as UserType } from '../../../../types';
 import './Sidebar.css';
@@ -61,12 +61,6 @@ const SidebarLeft = ({ user }: SidebarLeftProps) => {
             <Link to="/jobs" className="sidebar-menu-link">
               <Briefcase size={20} />
               <span>Jobs</span>
-            </Link>
-          </li>
-          <li className={`sidebar-menu-item ${isActive('/announcements') ? 'active' : ''}`}>
-            <Link to="/announcements" className="sidebar-menu-link">
-              <Bell size={20} />
-              <span>Announcements</span>
             </Link>
           </li>
         </ul>
