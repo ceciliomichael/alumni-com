@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { addAlumni } from './alumniService';
+import { AlumniRecord } from '../../types';
 
 // User interface
 export interface User {
@@ -9,8 +10,8 @@ export interface User {
   email: string;
   password: string; // In a real app, this would be hashed
   batch?: string;
-  profileImage?: string;
-  coverPhoto?: string;
+  profileImage?: string | null;
+  coverPhoto?: string | null;
   bio?: string;
   job?: string;
   company?: string;
@@ -104,8 +105,8 @@ export const registerUser = async (userData: Omit<User, 'id' | 'createdAt' | 'is
       email: userData.email.toLowerCase(), // Store email in lowercase for consistency
       createdAt: new Date().toISOString(),
       isActive: false, // Users need to be approved by admin
-      profileImage: userData.profileImage || undefined,
-      coverPhoto: userData.coverPhoto || undefined
+      profileImage: userData.profileImage || null,
+      coverPhoto: userData.coverPhoto || null
     };
     
     const docRef = await addDoc(collection(db, COLLECTION_NAME), newUser);
@@ -121,10 +122,10 @@ export const registerUser = async (userData: Omit<User, 'id' | 'createdAt' | 'is
       email: userData.email,
       batch: userData.batch || 'Unknown',
       isActive: false,
-      profileImage: userData.profileImage,
+      profileImage: userData.profileImage || null,
       userId: createdUser.id, // Link to user ID
       dateRegistered: new Date().toISOString()
-    });
+    } as Omit<AlumniRecord, 'id'>);
     
     return createdUser;
   } catch (error) {

@@ -234,32 +234,32 @@ const GalleryManagement = () => {
           {/* Specific Event filter (uses item.event) */}
           <div className="admin-filter-group">
             <Calendar size={14} className="admin-filter-icon" />
-            <select 
-              className="admin-filter-select"
-              value={eventFilter}
-              onChange={(e) => setEventFilter(e.target.value)}
+          <select 
+            className="admin-filter-select"
+            value={eventFilter}
+            onChange={(e) => setEventFilter(e.target.value)}
               aria-label="Filter by specific event"
-            >
+          >
               <option value="all">All Linked Events</option>
-              {events.map(event => (
-                <option key={event.id} value={event.id}>{event.title}</option>
-              ))}
-            </select>
+            {events.map(event => (
+              <option key={event.id} value={event.id}>{event.title}</option>
+            ))}
+          </select>
           </div>
           
           {/* Approval filter */}
           <div className="admin-filter-group">
             <CheckCircle size={14} className="admin-filter-icon" />
-            <select 
-              className="admin-filter-select"
-              value={approvalFilter}
-              onChange={(e) => setApprovalFilter(e.target.value as 'all' | 'approved' | 'pending')}
+          <select 
+            className="admin-filter-select"
+            value={approvalFilter}
+            onChange={(e) => setApprovalFilter(e.target.value as 'all' | 'approved' | 'pending')}
               aria-label="Filter by approval status"
-            >
-              <option value="all">All Status</option>
-              <option value="approved">Approved</option>
-              <option value="pending">Pending</option>
-            </select>
+          >
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+          </select>
           </div>
         </div>
         
@@ -324,35 +324,35 @@ const GalleryManagement = () => {
                     <div className={`admin-gallery-badge ${item.isApproved ? 'admin-badge-success' : 'admin-badge-warning'}`}>
                       {item.isApproved ? 'Approved' : 'Pending'}
                     </div>
-                    
-                    <div className="admin-gallery-actions">
-                      {!item.isApproved && (
-                        <button 
-                          className="admin-action-btn admin-action-approve"
-                          onClick={() => handleApprove(item.id, true)}
-                          title="Approve"
-                        >
-                          <CheckCircle size={16} />
-                        </button>
-                      )}
-                      {item.isApproved && (
-                        <button 
-                          className="admin-action-btn admin-action-reject"
-                          onClick={() => handleApprove(item.id, false)}
+                  
+                  <div className="admin-gallery-actions">
+                    {!item.isApproved && (
+                      <button 
+                        className="admin-action-btn admin-action-approve"
+                        onClick={() => handleApprove(item.id, true)}
+                        title="Approve"
+                      >
+                        <CheckCircle size={16} />
+                      </button>
+                    )}
+                    {item.isApproved && (
+                      <button 
+                        className="admin-action-btn admin-action-reject"
+                        onClick={() => handleApprove(item.id, false)}
                           title="Unapprove (Set Pending)"
-                        >
-                          <XCircle size={16} />
-                        </button>
-                      )}
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    )}
                       <button className="admin-action-btn admin-action-view" onClick={() => handleViewGalleryItem(item)}>
                         <Eye size={16} />
                       </button>
                       <button className="admin-action-btn admin-action-edit" onClick={() => handleEditGalleryItem(item.id)}>
-                        <Edit size={16} />
-                      </button>
+                      <Edit size={16} />
+                    </button>
                       <button className="admin-action-btn admin-action-delete" onClick={() => handleDeleteGalleryItem(item.id)}>
-                        <Trash size={16} />
-                      </button>
+                      <Trash size={16} />
+                    </button>
                     </div>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ const GalleryManagement = () => {
               <p>There are no gallery items matching your current filters.</p>
               {/* Optional: Add a button to clear filters or add item */}
               <button 
-                className="admin-btn-primary" 
+                className="admin-btn-primary"
                 onClick={() => navigate('/admin/gallery/add')}
               >
                 Add First Gallery Item

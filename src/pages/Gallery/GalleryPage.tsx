@@ -398,10 +398,10 @@ const GalleryPage = () => {
                 {viewMode === 'masonry' ? 
                   "You haven't bookmarked any photos yet. Browse the gallery and bookmark photos you like!" :
                   searchTerm ? 
-                    "No photos match your search criteria. Try a different search term." : 
-                    activeAlbum !== 'all' ? 
-                      `There are no photos in the ${activeAlbum.replace('-', ' ')} album yet.` : 
-                      "There are no photos in the gallery yet. Check back later or upload photos yourself!"
+                  "No photos match your search criteria. Try a different search term." : 
+                  activeAlbum !== 'all' ? 
+                    `There are no photos in the ${activeAlbum.replace('-', ' ')} album yet.` : 
+                    "There are no photos in the gallery yet. Check back later or upload photos yourself!"
                 }
               </p>
             </div>
@@ -458,40 +458,40 @@ const GalleryPage = () => {
 
               {uploadStep === 'details' && previewUrl && (
                 <div className="upload-details-step">
-                  <div className="form-group">
-                    <label htmlFor="title">Photo Title*</label>
-                    <input
-                      type="text"
-                      id="title"
-                      name="title"
-                      value={uploadDetails.title}
-                      onChange={handleUploadDetailsChange}
-                      required
-                      className="form-control"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="album">Album*</label>
-                    <select
-                      id="album"
-                      name="album"
-                      value={uploadDetails.album}
-                      onChange={handleUploadDetailsChange}
-                      className="form-control"
-                    >
-                      {albumCategories.slice(1).map((album, index) => (
-                        <option key={index} value={album}>
-                          {album}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="admin-notice">
-                    <div className="admin-notice-icon">!</div>
-                    <p>Your upload will be reviewed by an admin before appearing in the gallery.</p>
-                  </div>
+                    <div className="form-group">
+                      <label htmlFor="title">Photo Title*</label>
+                      <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        value={uploadDetails.title}
+                        onChange={handleUploadDetailsChange}
+                        required
+                        className="form-control"
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="album">Album*</label>
+                      <select
+                        id="album"
+                        name="album"
+                        value={uploadDetails.album}
+                        onChange={handleUploadDetailsChange}
+                        className="form-control"
+                      >
+                        {albumCategories.slice(1).map((album, index) => (
+                          <option key={index} value={album}>
+                            {album}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="admin-notice">
+                      <div className="admin-notice-icon">!</div>
+                      <p>Your upload will be reviewed by an admin before appearing in the gallery.</p>
+                    </div>
 
                   <div className="preview-image-container">
                     <img src={previewUrl} alt="Preview" className="preview-image" />

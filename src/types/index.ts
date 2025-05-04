@@ -3,8 +3,8 @@ export interface User {
   name: string;
   email: string;
   batch: string;
-  profileImage?: string;
-  coverPhoto?: string;
+  profileImage?: string | null;
+  coverPhoto?: string | null;
   bio?: string;
   job?: string;
   company?: string;
@@ -130,7 +130,7 @@ export interface AlumniRecord {
   isActive: boolean;
   dateRegistered: string;
   position?: string;
-  profileImage?: string;
+  profileImage?: string | null;
   userId?: string;
   // other alumni details
 }
