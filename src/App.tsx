@@ -9,12 +9,21 @@ import AboutPage from './pages/About/AboutPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import JobsPage from './pages/Jobs/JobsPage';
 import NotificationsPage from './pages/Notifications/NotificationsPage';
+import DonationsPage from './pages/Donations/DonationsPage';
 import Layout from './components/Layout/Layout';
 import { User } from './types';
 
-// Import user service
-import { getCurrentUser as getStoredUser, logoutUser } from './pages/Admin/services/localStorage/userService';
-import { User as ServiceUser } from './pages/Admin/services/localStorage/userService';
+// Import Firebase services
+import { getCurrentUser as getStoredUser, logoutUser } from './services/firebase/userService';
+import { User as ServiceUser } from './services/firebase/userService';
+import { initializeAlumniData } from './services/firebase/alumniService';
+import { initializeOfficerData } from './services/firebase/officerService';
+import { initializeEventData } from './services/firebase/eventService';
+import { initializeGalleryData } from './services/firebase/galleryService';
+import { initializeJobData } from './services/firebase/jobService';
+import { initializeDonationData } from './services/firebase/donationService';
+import { initializePostData } from './services/firebase/postService';
+import { initializeAdminUser as initializeAdmin } from './services/firebase/adminService';
 
 // Admin imports
 import AdminLoginPage from './pages/Admin/AdminLoginPage';
@@ -25,10 +34,11 @@ import PendingRegistrations from './pages/Admin/components/AlumniRecords/Pending
 import { AlumniOfficers, OfficerForm } from './pages/Admin/components/AlumniOfficers';
 import { EventManagement, EventForm } from './pages/Admin/components/Events';
 import { GalleryManagement, GalleryForm } from './pages/Admin/components/Gallery';
+import { DonationsManagement, DonationForm } from './pages/Admin/components/Donations';
 import JobManagement from './pages/Admin/components/Jobs/JobManagement';
 import JobForm from './pages/Admin/components/Jobs/JobForm';
 import ContactMessages from './pages/Admin/components/ContactMessages/ContactMessages';
-import { initializeContactMessages } from './pages/Admin/services/localStorage/contactService';
+import { initializeContactMessages } from './services/firebase/contactService';
 
 // Helper component for admin protected routes
 const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -104,10 +114,27 @@ function App() {
     };
   }, []);
 
-  // Initialize localStorage services
+  // Initialize Firebase services
   useEffect(() => {
-    // Initialize contact messages
-    initializeContactMessages();
+    const initializeServices = async () => {
+      try {
+        // Initialize all Firebase services
+        await initializeAlumniData();
+        await initializeOfficerData();
+        await initializeEventData();
+        await initializeGalleryData();
+        await initializeJobData();
+        await initializeDonationData();
+        await initializePostData();
+        await initializeContactMessages();
+        await initializeAdmin();
+        console.log('Firebase services initialized successfully');
+      } catch (error) {
+        console.error('Error initializing Firebase services:', error);
+      }
+    };
+    
+    initializeServices();
   }, []);
 
   // Logout function
@@ -232,6 +259,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route 
+            path="/donations"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <DonationsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
           
           {/* --- Admin Routes (Keep separate) --- */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -294,6 +331,15 @@ function App() {
           } />
           <Route path="/admin/messages" element={
             <ProtectedAdminRoute><ContactMessages /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/donations" element={
+            <ProtectedAdminRoute><DonationsManagement /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/donations/add" element={
+            <ProtectedAdminRoute><DonationForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/donations/edit/:id" element={
+            <ProtectedAdminRoute><DonationForm /></ProtectedAdminRoute>
           } />
 
           {/* --- Catch-all Route --- */}

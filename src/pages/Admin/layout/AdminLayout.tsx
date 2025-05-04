@@ -4,7 +4,7 @@ import {
   Menu, X, LogOut, Settings, User, 
   LayoutDashboard, Users, Award, Calendar,
   Image, Briefcase, ChevronRight, UserPlus,
-  MessageSquare
+  MessageSquare, DollarSign
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { getUnreadMessagesCount } from '../services/localStorage/contactService';
@@ -133,6 +133,15 @@ const AdminLayout = ({ children, title = 'Dashboard' }: AdminLayoutProps) => {
           >
             <Briefcase className="admin-menu-icon" />
             Jobs
+          </Link>
+          
+          <Link 
+            to="/admin/donations" 
+            className={`admin-menu-item ${location.pathname.includes('/admin/donations') ? 'active' : ''}`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <DollarSign className="admin-menu-icon" />
+            Donations
           </Link>
           
           <Link 

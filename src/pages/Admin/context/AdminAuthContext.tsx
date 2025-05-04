@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AdminUser } from '../../../types';
+import { 
+  adminLogin as firebaseAdminLogin, 
+  adminLogout as firebaseAdminLogout,
+  getCurrentAdminUser,
+  initializeAdminUser
+} from '../../../services/firebase/adminService';
 
 // Define the context type
 interface AdminAuthContextType {
@@ -26,68 +32,46 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
   
   // Check if user is already logged in on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem(ADMIN_USER_STORAGE_KEY);
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setAdminUser(parsedUser);
-      setIsAdminAuthenticated(true);
-    }
+    const init = async () => {
+      try {
+        // Check if user is already logged in
+        const storedUser = getCurrentAdminUser();
+        if (storedUser) {
+          setAdminUser(storedUser);
+          setIsAdminAuthenticated(true);
+        }
+        
+        // Initialize admin user if none exists
+        await initializeAdminUser();
+      } catch (error) {
+        console.error('Error initializing admin auth:', error);
+      }
+    };
     
-    // Initialize admin user if none exists
-    initializeAdminUser();
+    init();
   }, []);
-  
-  // Initialize default admin user if none exists
-  const initializeAdminUser = () => {
-    const existingAdmins = localStorage.getItem('admin_users');
-    
-    if (!existingAdmins) {
-      const defaultAdmin: AdminUser = {
-        id: '1',
-        username: 'admin',
-        password: 'admin123', // In a real app, this would be hashed
-        name: 'Admin User',
-        role: 'admin'
-      };
-      
-      localStorage.setItem('admin_users', JSON.stringify([defaultAdmin]));
-    }
-  };
   
   // Admin login function
   const adminLogin = async (username: string, password: string): Promise<AdminUser | null> => {
-    // In a real app, this would be an API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const admins = localStorage.getItem('admin_users');
-        if (admins) {
-          const parsedAdmins = JSON.parse(admins) as AdminUser[];
-          const foundUser = parsedAdmins.find(
-            (admin) => admin.username === username && admin.password === password
-          );
-          
-          if (foundUser) {
-            // Store user in local storage without password
-            const { password, ...userWithoutPassword } = foundUser;
-            const safeUser = { ...userWithoutPassword, password: '******' };
-            localStorage.setItem(ADMIN_USER_STORAGE_KEY, JSON.stringify(safeUser));
-            
-            setAdminUser(safeUser as AdminUser);
-            setIsAdminAuthenticated(true);
-            resolve(safeUser as AdminUser);
-          } else {
-            resolve(null);
-          }
-        } else {
-          resolve(null);
-        }
-      }, 500); // simulate API delay
-    });
+    try {
+      const user = await firebaseAdminLogin(username, password);
+      
+      if (user) {
+        setAdminUser(user);
+        setIsAdminAuthenticated(true);
+        return user;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error logging in admin:', error);
+      return null;
+    }
   };
   
   // Admin logout function
   const adminLogout = () => {
-    localStorage.removeItem(ADMIN_USER_STORAGE_KEY);
+    firebaseAdminLogout();
     setAdminUser(null);
     setIsAdminAuthenticated(false);
   };
@@ -116,4 +100,4 @@ export const useAdminAuth = (): AdminAuthContextType => {
   }
   
   return context;
-}; 
+};

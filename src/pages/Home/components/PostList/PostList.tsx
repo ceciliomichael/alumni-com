@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
 import PostModal from '../PostModal/PostModal';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
-import { deletePost } from '../../../Admin/services/localStorage/postService';
+import { deletePost } from '../../../../services/firebase/postService';
 import './PostList.css';
 
 interface PostListProps {
@@ -224,19 +224,24 @@ const PostList = ({
     setSelectedPostForDeletion(postId);
   };
 
-  const confirmDeletePost = () => {
+  const confirmDeletePost = async () => {
     if (selectedPostForDeletion) {
-      // Delete the post using the service
-      const success = deletePost(selectedPostForDeletion);
-      
-      if (success && onDeletePost) {
-        // Call the parent handler to update state
-        onDeletePost(selectedPostForDeletion);
+      try {
+        // Delete the post using the service
+        const success = await deletePost(selectedPostForDeletion);
+        
+        if (success && onDeletePost) {
+          // Call the parent handler to update state
+          onDeletePost(selectedPostForDeletion);
+        }
+      } catch (error) {
+        console.error('Error deleting post:', error);
+        alert('Failed to delete post. Please try again.');
+      } finally {
+        // Close the menu and reset state
+        setActiveMenu(null);
+        setSelectedPostForDeletion(null);
       }
-      
-      // Close the menu and reset state
-      setActiveMenu(null);
-      setSelectedPostForDeletion(null);
     }
   };
 
@@ -627,4 +632,4 @@ const PostList = ({
   );
 };
 
-export default PostList; 
+export default PostList;

@@ -2,20 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { Image, Search, Grid, Bookmark, RefreshCw, Upload, Plus, X, ImagePlus, FileText } from 'lucide-react';
 import ImagePlaceholder from '../../components/ImagePlaceholder';
 import GalleryCard from './components/GalleryCard';
+import { getAllGalleryItems, addGalleryItem } from '../../services/firebase/galleryService';
+import { GalleryPost } from '../../types';
+import { getCurrentUser } from '../../services/firebase/userService';
+import { fileToBase64, resizeImage, validateImageFile } from '../../services/firebase/storageService';
 import './Gallery.css';
-
-interface GalleryImage {
-  id: string;
-  title: string;
-  url: string;
-  date: string;
-  album: string;
-  likes: number;
-}
 
 const GalleryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryImages, setGalleryImages] = useState<GalleryPost[]>([]);
   const [activeAlbum, setActiveAlbum] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('grid');
@@ -27,6 +22,7 @@ const GalleryPage = () => {
     title: '',
     album: 'Homecoming'
   });
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Albums categories
@@ -39,14 +35,38 @@ const GalleryPage = () => {
     'Community Service'
   ];
   
-  // Simulate loading state on initial load
+  // Fetch current user
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const fetchUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
     
-    return () => clearTimeout(timer);
+    fetchUser();
+  }, []);
+  
+  // Load gallery items from Firestore
+  useEffect(() => {
+    const fetchGalleryItems = async () => {
+      setIsLoading(true);
+      try {
+        const items = await getAllGalleryItems();
+        // Filter for approved items only
+        const approvedItems = items.filter(item => item.isApproved);
+        setGalleryImages(approvedItems);
+      } catch (error) {
+        console.error('Error fetching gallery items:', error);
+        setGalleryImages([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchGalleryItems();
   }, []);
 
   // Clean up the object URL when the component unmounts
@@ -58,13 +78,44 @@ const GalleryPage = () => {
     };
   }, [previewUrl]);
 
-  // Filter images based on search term and active album
-  const filteredImages = galleryImages.filter(image => 
-    (searchTerm === '' || 
+  // Filter images based on search term, active album, and view mode (bookmarks)
+  const filteredImages = galleryImages.filter(image => {
+    // Search term filter
+    const matchesSearch = searchTerm === '' || 
       image.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      image.album.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (activeAlbum === 'all' || image.album.toLowerCase() === activeAlbum.toLowerCase())
-  );
+      (image.description && image.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Album filter (using albumCategory)
+    let matchesAlbum = false;
+    if (activeAlbum === 'all') {
+      matchesAlbum = true;
+    } else {
+      // Compare the selected activeAlbum (e.g., 'batch-reunions')
+      // with the stored image.albumCategory
+      matchesAlbum = image.albumCategory === activeAlbum;
+    }
+    
+    // Bookmarked filter (only when in masonry view)
+    let matchesBookmarked = true;
+    if (viewMode === 'masonry' && currentUser) {
+      // Check if the image is bookmarked by the current user
+      const isBookmarked = image.bookmarkedBy && 
+                          Array.isArray(image.bookmarkedBy) && 
+                          image.bookmarkedBy.includes(currentUser.id);
+      matchesBookmarked = isBookmarked;
+    }
+    
+    return matchesSearch && matchesAlbum && matchesBookmarked;
+  });
+
+  // Helper function to convert category slug to display name
+  const getDisplayCategoryName = (categorySlug?: string) => {
+    if (!categorySlug) return 'Uncategorized';
+    const words = categorySlug.split('-');
+    return words
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // Generate placeholder colors by album category
   const getColorByCategory = (category: string) => {
@@ -78,18 +129,42 @@ const GalleryPage = () => {
     return colorMap[category] || '#64748b';
   };
   
-  const handleRefreshGallery = () => {
+  const handleRefreshGallery = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const items = await getAllGalleryItems();
+      // Filter for approved items only
+      const approvedItems = items.filter(item => item.isApproved);
+      setGalleryImages(approvedItems);
+    } catch (error) {
+      console.error('Error refreshing gallery items:', error);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
   
   const handleAlbumChange = (album: string) => {
-    setActiveAlbum(album.toLowerCase().replace(' ', '-'));
+    if (album.toLowerCase() === 'all photos') {
+      setActiveAlbum('all');
+    } else {
+      setActiveAlbum(album.toLowerCase().replace(/\s+/g, '-'));
+    }
+  };
+
+  const handleViewModeChange = (mode: 'grid' | 'masonry') => {
+    if (mode === 'masonry' && !currentUser) {
+      alert('Please sign in to view your bookmarks');
+      return;
+    }
+    setViewMode(mode);
   };
 
   const openUploadModal = () => {
+    if (!currentUser) {
+      alert('Please sign in to upload photos');
+      return;
+    }
+    
     setShowUploadModal(true);
     setUploadStep('select');
     setUploadFile(null);
@@ -140,12 +215,66 @@ const GalleryPage = () => {
     });
   };
 
-  const handleUploadSubmit = () => {
-    // Here we'd normally send the file to the server
-    // For now, just simulate a success response
-    setTimeout(() => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const handleUploadSubmit = async () => {
+    if (!uploadFile) {
+      alert('Please select an image to upload');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      // Get current user
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        alert('You must be logged in to upload photos');
+        return;
+      }
+      
+      // Validate file
+      const validation = validateImageFile(uploadFile, 5); // 5MB max
+      if (!validation.valid) {
+        alert(validation.message);
+        return;
+      }
+      
+      // Resize and convert to base64 with more aggressive compression
+      const base64Image = await resizeImage(uploadFile, 800, 800, 0.6, true);
+      
+      // Format the album category properly for storage
+      const albumCategory = uploadDetails.album.toLowerCase().replace(/\s+/g, '-');
+      
+      // Create gallery item
+      const newGalleryItem: Omit<GalleryPost, 'id' | 'postedDate'> = {
+        title: uploadDetails.title,
+        description: `Uploaded by ${currentUser.name}`,
+        imageUrl: base64Image,
+        albumCategory: albumCategory, // Save to albumCategory field
+        event: '', // Keep event empty - would be linked to a specific event in admin
+        isApproved: false, // Needs admin approval
+        postedBy: currentUser.id,
+        likedBy: [], // Initialize with empty array
+        bookmarkedBy: [] // Initialize with empty array
+      };
+      
+      // Add to Firestore
+      await addGalleryItem(newGalleryItem);
+      
+      // Show success message
       setUploadStep('success');
-    }, 1000);
+      
+      // Refresh gallery after a short delay
+      setTimeout(() => {
+        handleRefreshGallery();
+      }, 2000);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('There was an error uploading your photo. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleTryAgain = () => {
@@ -181,15 +310,17 @@ const GalleryPage = () => {
               <div className="view-toggle">
                 <button 
                   className={`view-mode-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                  onClick={() => setViewMode('grid')}
-                  aria-label="Grid view"
+                  onClick={() => handleViewModeChange('grid')}
+                  aria-label="Grid view (all photos)"
+                  title="Show all photos"
                 >
                   <Grid size={18} />
                 </button>
                 <button 
                   className={`view-mode-btn ${viewMode === 'masonry' ? 'active' : ''}`}
-                  onClick={() => setViewMode('masonry')}
-                  aria-label="Masonry view"
+                  onClick={() => handleViewModeChange('masonry')}
+                  aria-label="Bookmarks view"
+                  title="Show bookmarked photos"
                 >
                   <Bookmark size={18} />
                 </button>
@@ -217,7 +348,11 @@ const GalleryPage = () => {
               {albumCategories.map((album, index) => (
                 <button 
                   key={index} 
-                  className={`album-filter ${activeAlbum === album.toLowerCase().replace(' ', '-') ? 'active' : ''}`}
+                  className={`album-filter ${
+                    album.toLowerCase() === 'all photos' 
+                      ? activeAlbum === 'all' ? 'active' : ''
+                      : activeAlbum === album.toLowerCase().replace(/\s+/g, '-') ? 'active' : ''
+                  }`}
                   onClick={() => handleAlbumChange(album)}
                 >
                   {album}
@@ -238,7 +373,16 @@ const GalleryPage = () => {
             <div className={`gallery-grid ${viewMode === 'masonry' ? 'masonry-layout' : ''}`}>
               {filteredImages.map(image => (
                 <div key={image.id} className={`gallery-item ${viewMode === 'masonry' ? 'masonry-item' : ''}`}>
-                  <GalleryCard image={image} />
+                  <GalleryCard 
+                    image={{
+                      id: image.id,
+                      title: image.title,
+                      url: image.imageUrl,
+                      date: image.postedDate,
+                      album: getDisplayCategoryName(image.albumCategory),
+                      likes: (image.likedBy?.length || 0)
+                    }} 
+                  />
                 </div>
               ))}
             </div>
@@ -247,13 +391,17 @@ const GalleryPage = () => {
               <div className="empty-state-icon">
                 <Image size={64} strokeWidth={1} color="#64748b" />
               </div>
-              <h3 className="empty-state-title">No photos found</h3>
+              <h3 className="empty-state-title">
+                {viewMode === 'masonry' ? 'No bookmarked photos found' : 'No photos found'}
+              </h3>
               <p className="empty-state-message">
-                {searchTerm ? 
-                  "No photos match your search criteria. Try a different search term." : 
-                  activeAlbum !== 'all' ? 
-                    `There are no photos in the ${activeAlbum.replace('-', ' ')} album yet.` : 
-                    "There are no photos in the gallery yet. Check back later or upload photos yourself!"
+                {viewMode === 'masonry' ? 
+                  "You haven't bookmarked any photos yet. Browse the gallery and bookmark photos you like!" :
+                  searchTerm ? 
+                    "No photos match your search criteria. Try a different search term." : 
+                    activeAlbum !== 'all' ? 
+                      `There are no photos in the ${activeAlbum.replace('-', ' ')} album yet.` : 
+                      "There are no photos in the gallery yet. Check back later or upload photos yourself!"
                 }
               </p>
             </div>
@@ -266,11 +414,7 @@ const GalleryPage = () => {
         <div className="modal-overlay">
           <div className="upload-modal">
             <div className="modal-header">
-              <h2>
-                {uploadStep === 'select' && 'Upload a Photo'}
-                {uploadStep === 'details' && 'Photo Details'}
-                {uploadStep === 'success' && 'Upload Successful'}
-              </h2>
+              <h2>Upload a Photo</h2>
               <button className="close-modal" onClick={closeUploadModal}>
                 <X size={20} />
               </button>
@@ -280,7 +424,12 @@ const GalleryPage = () => {
               {uploadStep === 'select' && (
                 <div className="upload-select-step">
                   <div className="upload-drop-area" onClick={triggerFileInput}>
-                    <ImagePlus size={48} />
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                      <path d="M12 12 L18 18"></path>
+                    </svg>
                     <h3>Select a photo to upload</h3>
                     <p>Click to browse or drag and drop your photo here</p>
                     <input
@@ -290,14 +439,10 @@ const GalleryPage = () => {
                       accept="image/*"
                       style={{ display: 'none' }}
                     />
-                    <button className="btn-select-file">
-                      <Plus size={16} />
-                      Select Photo
-                    </button>
                   </div>
 
                   <div className="upload-guidelines">
-                    <FileText size={20} />
+                    <FileText size={24} />
                     <div>
                       <h4>Upload Guidelines</h4>
                       <ul>
@@ -313,45 +458,43 @@ const GalleryPage = () => {
 
               {uploadStep === 'details' && previewUrl && (
                 <div className="upload-details-step">
-                  <div className="preview-image-container">
-                    <img src={previewUrl} alt="Preview" className="preview-image" />
+                  <div className="form-group">
+                    <label htmlFor="title">Photo Title*</label>
+                    <input
+                      type="text"
+                      id="title"
+                      name="title"
+                      value={uploadDetails.title}
+                      onChange={handleUploadDetailsChange}
+                      required
+                      className="form-control"
+                    />
                   </div>
                   
-                  <div className="upload-form">
-                    <div className="form-group">
-                      <label htmlFor="title">Photo Title*</label>
-                      <input
-                        type="text"
-                        id="title"
-                        name="title"
-                        value={uploadDetails.title}
-                        onChange={handleUploadDetailsChange}
-                        required
-                        className="form-control"
-                      />
-                    </div>
-                    
-                    <div className="form-group">
-                      <label htmlFor="album">Album*</label>
-                      <select
-                        id="album"
-                        name="album"
-                        value={uploadDetails.album}
-                        onChange={handleUploadDetailsChange}
-                        className="form-control"
-                      >
-                        {albumCategories.slice(1).map((album, index) => (
-                          <option key={index} value={album}>
-                            {album}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div className="admin-notice">
-                      <div className="admin-notice-icon">!</div>
-                      <p>Your upload will be reviewed by an admin before appearing in the gallery.</p>
-                    </div>
+                  <div className="form-group">
+                    <label htmlFor="album">Album*</label>
+                    <select
+                      id="album"
+                      name="album"
+                      value={uploadDetails.album}
+                      onChange={handleUploadDetailsChange}
+                      className="form-control"
+                    >
+                      {albumCategories.slice(1).map((album, index) => (
+                        <option key={index} value={album}>
+                          {album}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="admin-notice">
+                    <div className="admin-notice-icon">!</div>
+                    <p>Your upload will be reviewed by an admin before appearing in the gallery.</p>
+                  </div>
+
+                  <div className="preview-image-container">
+                    <img src={previewUrl} alt="Preview" className="preview-image" />
                   </div>
                 </div>
               )}
@@ -388,9 +531,9 @@ const GalleryPage = () => {
                   <button 
                     className="btn btn-primary" 
                     onClick={handleUploadSubmit}
-                    disabled={!uploadDetails.title}
+                    disabled={!uploadDetails.title || isSubmitting}
                   >
-                    Upload Photo
+                    {isSubmitting ? 'Uploading...' : 'Upload Photo'}
                   </button>
                 </>
               )}
@@ -413,4 +556,4 @@ const GalleryPage = () => {
   );
 };
 
-export default GalleryPage; 
+export default GalleryPage;

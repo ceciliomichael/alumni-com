@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User } from '../../types';
-import { Home, Users, Image, Calendar, Info, Bell, LogOut, Menu, X, User as UserIcon, Briefcase } from 'lucide-react';
+import { Home, Users, Image, Calendar, Info, Bell, LogOut, Menu, X, User as UserIcon, Briefcase, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import UserSearch from '../UserSearch/UserSearch';
 import ImagePlaceholder from '../ImagePlaceholder/ImagePlaceholder';
@@ -82,6 +82,15 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Briefcase size={18} /> Jobs
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link 
+                  to="/donations" 
+                  className={`nav-link ${location.pathname.includes('/donations') ? 'active' : ''}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <DollarSign size={18} /> Donations
                 </Link>
               </li>
               <li className="nav-item">

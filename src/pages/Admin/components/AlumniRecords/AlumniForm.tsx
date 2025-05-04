@@ -6,7 +6,7 @@ import {
   getAlumniById, 
   updateAlumni,
   initializeAlumniData
-} from '../../services/localStorage/alumniService';
+} from '../../../../services/firebase/alumniService';
 import { AlumniRecord } from '../../../../types';
 import AdminLayout from '../../layout/AdminLayout';
 import './AlumniRecords.css';
@@ -30,24 +30,32 @@ const AlumniForm = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeAlumniData();
-    
-    // If editing, fetch alumni data
-    if (isEditing && id) {
-      const alumniData = getAlumniById(id);
-      
-      if (alumniData) {
-        // Exclude id and dateRegistered from the form
-        const { id: _, dateRegistered: __, ...restData } = alumniData;
-        setFormData(restData);
-      } else {
-        // Handle case where alumni record doesn't exist
-        navigate('/admin/alumni-records');
+    const init = async () => {
+      try {
+        // Initialize sample data if empty
+        await initializeAlumniData();
+        
+        // If editing, fetch alumni data
+        if (isEditing && id) {
+          const alumniData = await getAlumniById(id);
+          
+          if (alumniData) {
+            // Exclude id and dateRegistered from the form
+            const { id: _, dateRegistered: __, ...restData } = alumniData;
+            setFormData(restData);
+          } else {
+            // Handle case where alumni record doesn't exist
+            navigate('/admin/alumni-records');
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing or fetching alumni data:', error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
     
-    setLoading(false);
+    init();
   }, [id, isEditing, navigate]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -91,7 +99,7 @@ const AlumniForm = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -101,10 +109,16 @@ const AlumniForm = () => {
     setIsSubmitting(true);
     
     try {
+      // Add dateRegistered field for new alumni
+      const alumniData = {
+        ...formData,
+        dateRegistered: new Date().toISOString()
+      };
+      
       if (isEditing && id) {
-        updateAlumni(id, formData);
+        await updateAlumni(id, alumniData);
       } else {
-        addAlumni(formData);
+        await addAlumni(alumniData);
       }
       
       navigate('/admin/alumni-records');
@@ -264,4 +278,4 @@ const AlumniForm = () => {
   );
 };
 
-export default AlumniForm; 
+export default AlumniForm;

@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Briefcase, Building, MapPin, 
-  DollarSign, Mail, Calendar, Link, FileText, CheckCircle, Clock
+  DollarSign, Mail, Calendar, Link, FileText, CheckCircle, Clock,
+  Upload, Plus, Image
 } from 'lucide-react';
 import { 
   addJob, 
   getJobById, 
   updateJob,
-  initializeJobData
-} from '../../services/localStorage/jobService';
-import { Job } from '../../services/localStorage/jobService';
+  Job
+} from '../../../../services/firebase/jobService';
+import { fileToBase64, resizeImage, validateImageFile } from '../../../../services/firebase/storageService';
 import AdminLayout from '../../layout/AdminLayout';
 import './Jobs.css';
 import './JobForm.css';
@@ -35,39 +36,91 @@ const JobForm = () => {
     salary: '',
     applicationType: 'email',
     applicationUrl: '',
-    deadline: ''
+    deadline: '',
+    companyLogo: ''
   };
   
   const [formData, setFormData] = useState<JobFormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [loading, setLoading] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clean up the object URL when the component unmounts
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeJobData();
-    
+    return () => {
+      if (previewUrl && !previewUrl.startsWith('data:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
     // If editing, fetch job data
     if (isEditing && id) {
-      const jobData = getJobById(id);
-      
-      if (jobData) {
-        // Exclude id and postedDate from the form
-        const { id: _, postedDate: __, ...restData } = jobData;
-        
-        // Format date for input field
-        if (restData.deadline) {
-          const date = new Date(restData.deadline);
-          // Format as YYYY-MM-DD for date input
-          restData.deadline = date.toISOString().split('T')[0];
-        }
-        
-        setFormData(restData);
-      } else {
-        // Handle case where job doesn't exist
-        navigate('/admin/jobs');
-      }
+      setLoading(true);
+      getJobById(id)
+        .then((jobData: Job | null) => {
+          if (jobData) {
+            // Exclude id and postedDate from the form
+            const { id: _, postedDate: __, ...restData } = jobData;
+            
+            // Format date for input field
+            if (restData.deadline) {
+              const date = new Date(restData.deadline);
+              // Format as YYYY-MM-DD for date input
+              restData.deadline = date.toISOString().split('T')[0];
+            }
+            
+            setFormData(restData);
+            
+            // If there's a company logo, set it as the preview
+            if (restData.companyLogo) {
+              setPreviewUrl(restData.companyLogo);
+            }
+          } else {
+            // Handle case where job doesn't exist
+            navigate('/admin/jobs');
+          }
+        })
+        .catch((error: unknown) => {
+          console.error('Error fetching job:', error);
+          navigate('/admin/jobs');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [id, isEditing, navigate]);
+  
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      // Validate file
+      const validation = validateImageFile(file, 2); // 2MB max for logos
+      if (!validation.valid) {
+        alert(validation.message);
+        return;
+      }
+      
+      setUploadFile(file);
+      
+      // Create preview URL
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
   
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -140,7 +193,7 @@ const JobForm = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -155,11 +208,20 @@ const JobForm = () => {
       if (submissionData.deadline) {
         submissionData.deadline = new Date(submissionData.deadline).toISOString();
       }
+      
+      // If a file was uploaded, process it
+      if (uploadFile) {
+        // Resize and convert to base64 with more aggressive compression
+        const base64Image = await resizeImage(uploadFile, 400, 400, 0.6, true);
+        
+        // Update the form data with the base64 image
+        submissionData.companyLogo = base64Image;
+      }
 
       if (isEditing && id) {
-        updateJob(id, submissionData);
+        await updateJob(id, submissionData);
       } else {
-        addJob(submissionData);
+        await addJob(submissionData);
       }
       
       navigate('/admin/jobs');
@@ -203,6 +265,9 @@ const JobForm = () => {
           </h2>
         </div>
         
+        {loading ? (
+          <div className="admin-loading">Loading job data...</div>
+        ) : (
         <form className="admin-form" onSubmit={handleSubmit}>
           <div className="admin-form-section">
             <h3 className="admin-form-section-title">Basic Information</h3>
@@ -259,6 +324,49 @@ const JobForm = () => {
                   placeholder="Enter job location"
                 />
                 {errors.location && <div className="admin-form-error">{errors.location}</div>}
+              </div>
+            </div>
+            
+            <div className="admin-form-row">
+              <div className="admin-form-group">
+                <label className="admin-form-label">
+                  <Image size={16} className="admin-form-icon" />
+                  Company Logo (Optional)
+                </label>
+                <div className="admin-upload-container">
+                  <button 
+                    type="button" 
+                    className="admin-upload-btn"
+                    onClick={triggerFileInput}
+                  >
+                    <Plus size={16} />
+                    Select Logo Image
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  {uploadFile && (
+                    <div className="admin-selected-file">
+                      <span>{uploadFile.name}</span>
+                      <span className="admin-file-size">({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  )}
+                </div>
+                <div className="admin-form-hint">Upload a company logo (JPG, PNG). Maximum size: 2MB.</div>
+                
+                {(previewUrl || formData.companyLogo) && (
+                  <div className="admin-logo-preview">
+                    <img 
+                      src={previewUrl || formData.companyLogo} 
+                      alt="Company logo preview" 
+                      className="admin-logo-preview-image"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             
@@ -565,9 +673,10 @@ const JobForm = () => {
             </button>
           </div>
         </form>
+        )}
       </div>
     </AdminLayout>
   );
 };
 
-export default JobForm; 
+export default JobForm;

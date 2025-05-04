@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Plus, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getAllAlumni, initializeAlumniData } from '../../services/localStorage/alumniService';
+import { getAllAlumni, initializeAlumniData } from '../../../../services/firebase/alumniService';
 import { AlumniRecord } from '../../../../types';
 import AdminLayout from '../../layout/AdminLayout';
 import './AlumniRecords.css';
@@ -17,74 +17,91 @@ const AlumniListByBatch = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeAlumniData();
+    const init = async () => {
+      try {
+        // Initialize sample data if empty
+        await initializeAlumniData();
+        
+        // Load and group alumni data
+        await loadAlumniByBatch();
+      } catch (error) {
+        console.error('Error initializing alumni data:', error);
+      }
+    };
     
-    // Load and group alumni data
-    loadAlumniByBatch();
+    init();
   }, []);
 
-  const loadAlumniByBatch = () => {
-    const alumni = getAllAlumni();
-    
-    // Group alumni by batch
-    const groupedByBatch: Record<string, AlumniRecord[]> = {};
-    
-    alumni.forEach(alum => {
-      if (!groupedByBatch[alum.batch]) {
-        groupedByBatch[alum.batch] = [];
-      }
-      groupedByBatch[alum.batch].push(alum);
-    });
-    
-    // Convert to array and sort by batch year (descending)
-    const batches = Object.keys(groupedByBatch)
-      .sort((a, b) => parseInt(b) - parseInt(a))
-      .map(batch => ({
-        batch,
-        alumni: groupedByBatch[batch]
-      }));
-    
-    setBatchGroups(batches);
+  const loadAlumniByBatch = async () => {
+    try {
+      const alumni = await getAllAlumni();
+      
+      // Group alumni by batch
+      const groupedByBatch: Record<string, AlumniRecord[]> = {};
+      
+      alumni.forEach(alum => {
+        if (!groupedByBatch[alum.batch]) {
+          groupedByBatch[alum.batch] = [];
+        }
+        groupedByBatch[alum.batch].push(alum);
+      });
+      
+      // Convert to array and sort by batch year (descending)
+      const batches = Object.keys(groupedByBatch)
+        .sort((a, b) => parseInt(b) - parseInt(a))
+        .map(batch => ({
+          batch,
+          alumni: groupedByBatch[batch]
+        }));
+      
+      setBatchGroups(batches);
+    } catch (error) {
+      console.error('Error loading alumni by batch:', error);
+      setBatchGroups([]);
+    }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     
-    if (!query.trim()) {
-      loadAlumniByBatch();
-      return;
-    }
-    
-    // Search within groups
-    const alumni = getAllAlumni();
-    const lowerCaseQuery = query.toLowerCase();
-    
-    const filteredAlumni = alumni.filter(
-      alum => 
-        alum.name.toLowerCase().includes(lowerCaseQuery) ||
-        alum.email.toLowerCase().includes(lowerCaseQuery)
-    );
-    
-    // Re-group filtered alumni
-    const filteredGroupedByBatch: Record<string, AlumniRecord[]> = {};
-    
-    filteredAlumni.forEach(alum => {
-      if (!filteredGroupedByBatch[alum.batch]) {
-        filteredGroupedByBatch[alum.batch] = [];
+    try {
+      if (!query.trim()) {
+        await loadAlumniByBatch();
+        return;
       }
-      filteredGroupedByBatch[alum.batch].push(alum);
-    });
-    
-    const filteredBatches = Object.keys(filteredGroupedByBatch)
-      .sort((a, b) => parseInt(b) - parseInt(a))
-      .map(batch => ({
-        batch,
-        alumni: filteredGroupedByBatch[batch]
-      }));
-    
-    setBatchGroups(filteredBatches);
+      
+      // Search within groups
+      const alumni = await getAllAlumni();
+      const lowerCaseQuery = query.toLowerCase();
+      
+      const filteredAlumni = alumni.filter(
+        alum => 
+          alum.name.toLowerCase().includes(lowerCaseQuery) ||
+          alum.email.toLowerCase().includes(lowerCaseQuery)
+      );
+      
+      // Re-group filtered alumni
+      const filteredGroupedByBatch: Record<string, AlumniRecord[]> = {};
+      
+      filteredAlumni.forEach(alum => {
+        if (!filteredGroupedByBatch[alum.batch]) {
+          filteredGroupedByBatch[alum.batch] = [];
+        }
+        filteredGroupedByBatch[alum.batch].push(alum);
+      });
+      
+      const filteredBatches = Object.keys(filteredGroupedByBatch)
+        .sort((a, b) => parseInt(b) - parseInt(a))
+        .map(batch => ({
+          batch,
+          alumni: filteredGroupedByBatch[batch]
+        }));
+      
+      setBatchGroups(filteredBatches);
+    } catch (error) {
+      console.error('Error searching alumni:', error);
+    }
   };
 
   return (
@@ -172,9 +189,9 @@ const AlumniListByBatch = () => {
           {searchQuery && (
             <button 
               className="admin-primary-btn"
-              onClick={() => {
+              onClick={async () => {
                 setSearchQuery('');
-                loadAlumniByBatch();
+                await loadAlumniByBatch();
               }}
             >
               Clear Search
@@ -186,4 +203,4 @@ const AlumniListByBatch = () => {
   );
 };
 
-export default AlumniListByBatch; 
+export default AlumniListByBatch;

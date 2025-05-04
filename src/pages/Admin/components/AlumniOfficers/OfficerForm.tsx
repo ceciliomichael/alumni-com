@@ -5,8 +5,7 @@ import {
   addOfficer, 
   getOfficerById, 
   updateOfficer,
-  initializeOfficerData,
-  updateUserWithOfficerInfo
+  initializeOfficerData
 } from '../../services/localStorage/officerService';
 import { 
   getAllAlumni, 
@@ -44,7 +43,6 @@ const OfficerForm = () => {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     // Initialize sample data if empty
@@ -77,8 +75,6 @@ const OfficerForm = () => {
         navigate('/admin/alumni-officers');
       }
     }
-    
-    setLoading(false);
   }, [id, isEditing, navigate]);
   
   const handleChange = (
@@ -154,22 +150,11 @@ const OfficerForm = () => {
           : undefined
       };
       
-      let officerId: string;
-      
       if (isEditing && id) {
-        const updated = updateOfficer(id, formattedData);
-        if (updated) {
-          officerId = updated.id;
-        } else {
-          throw new Error("Failed to update officer");
-        }
+        updateOfficer(id, formattedData);
       } else {
-        const newOfficer = addOfficer(formattedData);
-        officerId = newOfficer.id;
+        addOfficer(formattedData);
       }
-      
-      // Update the user account with officer information
-      updateUserWithOfficerInfo(officerId);
       
       navigate('/admin/alumni-officers');
     } catch (error) {
@@ -180,34 +165,31 @@ const OfficerForm = () => {
   
   const isBatchPosition = formData.title === 'Batch President';
   
-  if (loading) {
-    return (
-      <AdminLayout title={isEditing ? 'Edit Officer' : 'Add Officer'}>
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading...</p>
-        </div>
-      </AdminLayout>
-    );
-  }
-  
   return (
-    <AdminLayout title={isEditing ? 'Edit Officer' : 'Add Officer'}>
-      <div className="admin-container">
-        <div className="alumni-records-header">
-          <button 
-            className="back-button"
-            onClick={() => navigate('/admin/alumni-officers')}
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Officers</span>
-          </button>
+    <AdminLayout title={isEditing ? 'Edit Officer Position' : 'Add Officer Position'}>
+      <div className="admin-toolbar">
+        <button 
+          className="admin-back-btn"
+          onClick={() => navigate('/admin/alumni-officers')}
+        >
+          <ArrowLeft size={20} />
+          Back to Officers
+        </button>
+      </div>
+      
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <h2 className="admin-card-title">
+            {isEditing ? 'Edit Officer Position' : 'Add New Officer Position'}
+          </h2>
         </div>
         
-        <div className="admin-card">
-          <form className="admin-form" onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="form-section">
+        <form className="admin-form" onSubmit={handleSubmit}>
+          <div className="admin-form-section">
+            <h3 className="admin-form-section-title">Position Information</h3>
+            
+            <div className="admin-form-row">
+              <div className="admin-form-group">
                 <label htmlFor="title" className="admin-form-label">Position Title *</label>
                 <select
                   id="title"
@@ -215,7 +197,6 @@ const OfficerForm = () => {
                   className={`admin-form-input ${errors.title ? 'admin-input-error' : ''}`}
                   value={formData.title}
                   onChange={handleChange}
-                  disabled={isSubmitting}
                 >
                   <option value="">Select Position</option>
                   {OFFICER_POSITIONS.map(position => (
@@ -224,9 +205,11 @@ const OfficerForm = () => {
                 </select>
                 {errors.title && <div className="admin-form-error">{errors.title}</div>}
               </div>
-              
-              {isBatchPosition && (
-                <div className="form-section">
+            </div>
+            
+            {isBatchPosition && (
+              <div className="admin-form-row">
+                <div className="admin-form-group">
                   <label htmlFor="batchYear" className="admin-form-label">Batch Year *</label>
                   <input
                     type="text"
@@ -236,13 +219,14 @@ const OfficerForm = () => {
                     value={formData.batchYear || ''}
                     onChange={handleChange}
                     placeholder="Enter batch year (e.g., 2020)"
-                    disabled={isSubmitting}
                   />
                   {errors.batchYear && <div className="admin-form-error">{errors.batchYear}</div>}
                 </div>
-              )}
-              
-              <div className="form-section">
+              </div>
+            )}
+            
+            <div className="admin-form-row">
+              <div className="admin-form-group">
                 <label htmlFor="alumniId" className="admin-form-label">Assigned Alumni *</label>
                 <select
                   id="alumniId"
@@ -250,23 +234,20 @@ const OfficerForm = () => {
                   className={`admin-form-input ${errors.alumniId ? 'admin-input-error' : ''}`}
                   value={formData.alumniId}
                   onChange={handleChange}
-                  disabled={isSubmitting}
                 >
                   <option value="">Select Alumni</option>
-                  {allAlumni
-                    .filter(alumni => alumni.isActive)
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(alumni => (
-                      <option key={alumni.id} value={alumni.id}>
-                        {alumni.name} (Batch {alumni.batch})
-                      </option>
-                    ))
-                  }
+                  {allAlumni.map(alumni => (
+                    <option key={alumni.id} value={alumni.id}>
+                      {alumni.name} (Batch {alumni.batch})
+                    </option>
+                  ))}
                 </select>
                 {errors.alumniId && <div className="admin-form-error">{errors.alumniId}</div>}
               </div>
-              
-              <div className="form-section">
+            </div>
+            
+            <div className="admin-form-row admin-form-row-2">
+              <div className="admin-form-group">
                 <label htmlFor="startDate" className="admin-form-label">Start Date *</label>
                 <input
                   type="date"
@@ -275,12 +256,11 @@ const OfficerForm = () => {
                   className={`admin-form-input ${errors.startDate ? 'admin-input-error' : ''}`}
                   value={formData.startDate}
                   onChange={handleChange}
-                  disabled={isSubmitting}
                 />
                 {errors.startDate && <div className="admin-form-error">{errors.startDate}</div>}
               </div>
               
-              <div className="form-section">
+              <div className="admin-form-group">
                 <label htmlFor="endDate" className="admin-form-label">End Date</label>
                 <input
                   type="date"
@@ -289,33 +269,32 @@ const OfficerForm = () => {
                   className="admin-form-input"
                   value={formData.endDate || ''}
                   onChange={handleChange}
-                  disabled={isSubmitting}
                 />
-                <div className="form-hint">Leave blank for current position</div>
+                <div className="admin-form-hint">Leave blank if no end date.</div>
               </div>
             </div>
+          </div>
+          
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              onClick={() => navigate('/admin/alumni-officers')}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
             
-            <div className="admin-form-actions">
-              <button 
-                type="button"
-                className="admin-form-cancel"
-                onClick={() => navigate('/admin/alumni-officers')}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              
-              <button 
-                type="submit" 
-                className="admin-form-submit"
-                disabled={isSubmitting}
-              >
-                <Save size={18} />
-                <span>{isSubmitting ? 'Saving...' : (isEditing ? 'Update' : 'Save')}</span>
-              </button>
-            </div>
-          </form>
-        </div>
+            <button
+              type="submit"
+              className="admin-btn-primary"
+              disabled={isSubmitting}
+            >
+              <Save size={20} />
+              {isSubmitting ? 'Saving...' : 'Save Position'}
+            </button>
+          </div>
+        </form>
       </div>
     </AdminLayout>
   );

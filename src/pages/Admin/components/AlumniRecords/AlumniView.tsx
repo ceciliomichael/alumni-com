@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Mail, Calendar, Briefcase, School } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getAlumniById } from '../../services/localStorage/alumniService';
+import { getAlumniById } from '../../../../services/firebase/alumniService';
 import { AlumniRecord } from '../../../../types';
 import AdminLayout from '../../layout/AdminLayout';
 
@@ -12,11 +12,21 @@ const AlumniView = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (id) {
-      const alumniData = getAlumniById(id);
-      setAlumni(alumniData);
-      setLoading(false);
-    }
+    const fetchAlumni = async () => {
+      if (id) {
+        try {
+          const alumniData = await getAlumniById(id);
+          setAlumni(alumniData);
+        } catch (error) {
+          console.error('Error fetching alumni data:', error);
+          setAlumni(null);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchAlumni();
   }, [id]);
 
   if (loading) {
@@ -162,4 +172,4 @@ const AlumniView = () => {
   );
 };
 
-export default AlumniView; 
+export default AlumniView;

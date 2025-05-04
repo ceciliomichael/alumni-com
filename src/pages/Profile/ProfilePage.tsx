@@ -17,8 +17,8 @@ import {
   getFollowing,
   updateUser,
   getCurrentUser
-} from '../../pages/Admin/services/localStorage/userService';
-import { getPostsByUserId } from '../../pages/Admin/services/localStorage/postService';
+} from '../../services/firebase/userService';
+import { getPostsByUserId } from '../../services/firebase/postService';
 import './styles.css';
 
 interface ProfilePageProps {
@@ -51,40 +51,47 @@ const ProfilePage = ({
     setIsLoading(true);
     
     const loadUserProfile = async () => {
-      let userToDisplay = null;
-      
-      if (isViewingOtherUser && userId) {
-        // Viewing another user's profile
-        userToDisplay = getUserById(userId);
+      try {
+        let userToDisplay = null;
         
-        // Check if current user is following this profile
-        if (currentUser && userToDisplay) {
-          const following = isFollowing(currentUser.id, userToDisplay.id);
-          setIsFollowingUser(following);
+        if (isViewingOtherUser && userId) {
+          // Viewing another user's profile
+          userToDisplay = await getUserById(userId);
+          
+          // Check if current user is following this profile
+          if (currentUser && userToDisplay) {
+            const following = await isFollowing(currentUser.id, userToDisplay.id);
+            setIsFollowingUser(following);
+          }
+        } else {
+          // Viewing own profile
+          userToDisplay = currentUser;
         }
-      } else {
-        // Viewing own profile
-        userToDisplay = currentUser;
+        
+        if (userToDisplay) {
+          setProfileUser(userToDisplay as unknown as User);
+          
+          // Load the user's posts and sort by newest first
+          const userPosts = await getPostsByUserId(userToDisplay.id);
+          const sortedPosts = [...userPosts].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setPosts(sortedPosts);
+          
+          // Get follower and following data
+          const followersList = await getFollowers(userToDisplay.id);
+          const followingList = await getFollowing(userToDisplay.id);
+          
+          setFollowers(followersList as unknown as User[]);
+          setFollowing(followingList as unknown as User[]);
+          setFollowersCount(followersList.length);
+          setFollowingCount(followingList.length);
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      if (userToDisplay) {
-        setProfileUser(userToDisplay);
-        
-        // Load the user's posts
-        const userPosts = getPostsByUserId(userToDisplay.id);
-        setPosts(userPosts);
-        
-        // Get follower and following data
-        const followersList = getFollowers(userToDisplay.id);
-        const followingList = getFollowing(userToDisplay.id);
-        
-        setFollowers(followersList);
-        setFollowing(followingList);
-        setFollowersCount(followersList.length);
-        setFollowingCount(followingList.length);
-      }
-      
-      setIsLoading(false);
     };
     
     loadUserProfile();
@@ -92,11 +99,19 @@ const ProfilePage = ({
 
   // Listen for localStorage changes to refresh posts
   useEffect(() => {
-    const handleStorageChange = () => {
+    const handleStorageChange = async () => {
       if (profileUser) {
-        // Refresh posts when storage changes
-        const refreshedPosts = getPostsByUserId(profileUser.id);
-        setPosts(refreshedPosts);
+        try {
+          // Refresh posts when storage changes
+          const refreshedPosts = await getPostsByUserId(profileUser.id);
+          // Sort by newest first
+          const sortedPosts = [...refreshedPosts].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setPosts(sortedPosts);
+        } catch (error) {
+          console.error('Error refreshing posts:', error);
+        }
       }
     };
     
@@ -106,114 +121,138 @@ const ProfilePage = ({
     };
   }, [profileUser]);
 
-  const handleSaveProfile = (formData: ProfileFormData) => {
-    // Save user data to localStorage
+  const handleSaveProfile = async (formData: ProfileFormData) => {
+    // Save user data to Firestore
     if (profileUser) {
-      const updatedUser = updateUser(profileUser.id, {
-        name: formData.name,
-        email: formData.email,
-        batch: formData.batch,
-        profileImage: formData.profileImage,
-        coverPhoto: formData.coverPhoto,
-        bio: formData.bio,
-        job: formData.job,
-        company: formData.company, 
-        location: formData.location,
-        socialLinks: {
-          linkedin: formData.linkedin,
-          twitter: formData.twitter,
-          website: formData.website
-        }
-      });
+      try {
+        const updatedUser = await updateUser(profileUser.id, {
+          name: formData.name,
+          email: formData.email,
+          batch: formData.batch,
+          profileImage: formData.profileImage,
+          coverPhoto: formData.coverPhoto,
+          bio: formData.bio,
+          job: formData.job,
+          company: formData.company, 
+          location: formData.location,
+          socialLinks: {
+            linkedin: formData.linkedin,
+            twitter: formData.twitter,
+            website: formData.website
+          }
+        });
 
-      if (updatedUser) {
-        // Trigger localStorage event to update user data across tabs
-        window.dispatchEvent(new Event('storage'));
-        
-        // Update local state
-        setProfileUser(updatedUser);
-        
-        // If this update is for the current user, refresh the page to show changes everywhere
-        const currentUser = getCurrentUser();
-        if (currentUser && currentUser.id === updatedUser.id) {
-          // Force a refresh of the app state
-          window.dispatchEvent(new StorageEvent('storage', {
-            key: 'currentUser'
-          }));
+        if (updatedUser) {
+          // Trigger localStorage event to update user data across tabs
+          window.dispatchEvent(new Event('storage'));
+          
+          // Update local state
+          setProfileUser(updatedUser as unknown as User);
+          
+          // If this update is for the current user, refresh the page to show changes everywhere
+          const currentUser = getCurrentUser();
+          if (currentUser && currentUser.id === updatedUser.id) {
+            // Force a refresh of the app state
+            window.dispatchEvent(new StorageEvent('storage', {
+              key: 'currentUser'
+            }));
+          }
         }
+      } catch (error) {
+        console.error('Error updating profile:', error);
       }
     }
     setIsEditing(false);
   };
   
   // Handle direct image change from profile header
-  const handleImageChange = (type: 'profile' | 'cover', imageData: string) => {
+  const handleImageChange = async (type: 'profile' | 'cover', imageData: string) => {
     if (profileUser && currentUser && profileUser.id === currentUser.id) {
-      const updatedUser = updateUser(profileUser.id, {
-        [type === 'profile' ? 'profileImage' : 'coverPhoto']: imageData
-      });
-      
-      if (updatedUser) {
-        setProfileUser(updatedUser);
+      try {
+        const updatedUser = await updateUser(profileUser.id, {
+          [type === 'profile' ? 'profileImage' : 'coverPhoto']: imageData
+        });
+        
+        if (updatedUser) {
+          setProfileUser(updatedUser as unknown as User);
+        }
+      } catch (error) {
+        console.error('Error updating image:', error);
       }
     }
   };
   
   // Handle follow action
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!currentUser || !profileUser) return;
     
-    const success = followUser(currentUser.id, profileUser.id);
-    if (success) {
-      setIsFollowingUser(true);
-      // Refresh followers list
-      const updatedFollowers = getFollowers(profileUser.id);
-      setFollowers(updatedFollowers);
-      setFollowersCount(updatedFollowers.length);
+    try {
+      const success = await followUser(currentUser.id, profileUser.id);
+      if (success) {
+        setIsFollowingUser(true);
+        // Refresh followers list
+        const updatedFollowers = await getFollowers(profileUser.id);
+        setFollowers(updatedFollowers as unknown as User[]);
+        setFollowersCount(updatedFollowers.length);
+      }
+    } catch (error) {
+      console.error('Error following user:', error);
     }
   };
   
   // Handle unfollow action
-  const handleUnfollow = () => {
+  const handleUnfollow = async () => {
     if (!currentUser || !profileUser) return;
     
-    const success = unfollowUser(currentUser.id, profileUser.id);
-    if (success) {
-      setIsFollowingUser(false);
-      // Refresh followers list
-      const updatedFollowers = getFollowers(profileUser.id);
-      setFollowers(updatedFollowers);
-      setFollowersCount(updatedFollowers.length);
+    try {
+      const success = await unfollowUser(currentUser.id, profileUser.id);
+      if (success) {
+        setIsFollowingUser(false);
+        // Refresh followers list
+        const updatedFollowers = await getFollowers(profileUser.id);
+        setFollowers(updatedFollowers as unknown as User[]);
+        setFollowersCount(updatedFollowers.length);
+      }
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
     }
   };
   
   // Handle user follow actions from the modals
-  const handleFollowUser = (targetUserId: string) => {
+  const handleFollowUser = async (targetUserId: string) => {
     if (!currentUser) return;
     
-    const success = followUser(currentUser.id, targetUserId);
-    if (success && profileUser) {
-      // Refresh following list if on current user's profile
-      if (profileUser.id === currentUser.id) {
-        const updatedFollowing = getFollowing(currentUser.id);
-        setFollowing(updatedFollowing);
-        setFollowingCount(updatedFollowing.length);
+    try {
+      const success = await followUser(currentUser.id, targetUserId);
+      if (success && profileUser) {
+        // Refresh following list if on current user's profile
+        if (profileUser.id === currentUser.id) {
+          const updatedFollowing = await getFollowing(currentUser.id);
+          setFollowing(updatedFollowing as unknown as User[]);
+          setFollowingCount(updatedFollowing.length);
+        }
       }
+    } catch (error) {
+      console.error('Error following user from modal:', error);
     }
   };
   
   // Handle user unfollow actions from the modals
-  const handleUnfollowUser = (targetUserId: string) => {
+  const handleUnfollowUser = async (targetUserId: string) => {
     if (!currentUser) return;
     
-    const success = unfollowUser(currentUser.id, targetUserId);
-    if (success && profileUser) {
-      // Refresh following list if on current user's profile
-      if (profileUser.id === currentUser.id) {
-        const updatedFollowing = getFollowing(currentUser.id);
-        setFollowing(updatedFollowing);
-        setFollowingCount(updatedFollowing.length);
+    try {
+      const success = await unfollowUser(currentUser.id, targetUserId);
+      if (success && profileUser) {
+        // Refresh following list if on current user's profile
+        if (profileUser.id === currentUser.id) {
+          const updatedFollowing = await getFollowing(currentUser.id);
+          setFollowing(updatedFollowing as unknown as User[]);
+          setFollowingCount(updatedFollowing.length);
+        }
       }
+    } catch (error) {
+      console.error('Error unfollowing user from modal:', error);
     }
   };
   
@@ -278,7 +317,6 @@ const ProfilePage = ({
         <>
           <ProfileHeader 
             user={profileUser}
-            stats={activityStats}
             followersCount={followersCount}
             followingCount={followingCount}
             onFollowersClick={openFollowersModal}
@@ -294,7 +332,13 @@ const ProfilePage = ({
           
           <div className="profile-body">
             <div className="profile-sidebar">
-              <ProfileAbout user={profileUser} />
+              <ProfileAbout 
+                bio={profileUser.bio || ''}
+                job={profileUser.job || ''}
+                company={profileUser.company || ''}
+                location={profileUser.location || ''}
+                socialLinks={profileUser.socialLinks || {}}
+              />
               <ProfileActivity stats={activityStats} />
             </div>
             
@@ -302,7 +346,7 @@ const ProfilePage = ({
               <ProfilePosts 
                 posts={posts} 
                 profileUser={profileUser}
-                currentUser={currentUser}
+                currentUser={currentUser || null}
               />
             </div>
           </div>
@@ -311,31 +355,33 @@ const ProfilePage = ({
       
       {showFollowersModal && (
         <FollowersModal
+          isOpen={showFollowersModal}
           title="Followers"
           users={followers}
           onClose={() => setShowFollowersModal(false)}
-          onUserClick={navigateToUserProfile}
-          currentUserId={currentUser?.id}
-          currentUserFollowing={following.map(user => user.id)}
-          onFollow={handleFollowUser}
-          onUnfollow={handleUnfollowUser}
+          onViewProfile={navigateToUserProfile}
+          currentUserId={currentUser?.id || null}
+          followingIds={following.map(user => user.id)}
+          onFollowUser={handleFollowUser}
+          onUnfollowUser={handleUnfollowUser}
         />
       )}
       
       {showFollowingModal && (
         <FollowersModal
+          isOpen={showFollowingModal}
           title="Following"
           users={following}
           onClose={() => setShowFollowingModal(false)}
-          onUserClick={navigateToUserProfile}
-          currentUserId={currentUser?.id}
-          currentUserFollowing={following.map(user => user.id)}
-          onFollow={handleFollowUser}
-          onUnfollow={handleUnfollowUser}
+          onViewProfile={navigateToUserProfile}
+          currentUserId={currentUser?.id || null}
+          followingIds={following.map(user => user.id)}
+          onFollowUser={handleFollowUser}
+          onUnfollowUser={handleUnfollowUser}
         />
       )}
     </div>
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

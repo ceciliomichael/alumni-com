@@ -83,4 +83,74 @@
 .admin-gallery-status-badge-pending {
   background-color: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
+}
+
+/* Gallery Category Selector */
+.admin-gallery-category-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.admin-gallery-category-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  background-color: #f3f4f6;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.admin-gallery-category-item:hover {
+  background-color: #e5e7eb;
+}
+
+.admin-gallery-category-item.active {
+  background-color: #dbeafe;
+  color: #2563eb;
+  border-color: #93c5fd;
+  font-weight: 600;
+}
+
+/* Make form select more consistent with other inputs */
+.admin-form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #1e293b;
+  background-color: white;
+  transition: border-color 0.2s ease-in-out;
+}
+
+.admin-form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.admin-form-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-gallery-category-selector {
+    gap: 8px;
+  }
+  
+  .admin-gallery-category-item {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
 } 

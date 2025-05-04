@@ -3,7 +3,7 @@ import { User, Post } from '../../../../types';
 import { Image, Smile, Send, X } from 'lucide-react';
 import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
 import './PostForm.css';
-import { addPost } from '../../../../pages/Admin/services/localStorage/postService';
+import { addPost } from '../../../../services/firebase/postService';
 import FeelingSelector from './FeelingSelector';
 import { Feeling } from './types';
 
@@ -76,7 +76,7 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
     setShowFeelingSelector(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if ((!content.trim() && selectedImages.length === 0) || !user) {
@@ -85,33 +85,39 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
     
     setIsSubmitting(true);
     
-    // Prepare post data
-    const postData = {
-      userId: user.id,
-      userName: user.name,
-      userImage: user.profileImage,
-      content: content.trim(),
-      images: selectedImages,
-      feeling: selectedFeeling,
-      updatedAt: new Date().toISOString()
-    };
-    
-    // Use postService to add the post
-    const newPost = addPost(postData);
-    
-    // Simulate API delay for UI feedback
-    setTimeout(() => {
+    try {
+      // Prepare post data
+      const postData = {
+        userId: user.id,
+        userName: user.name,
+        userImage: user.profileImage,
+        content: content.trim(),
+        images: selectedImages,
+        feeling: selectedFeeling || undefined, // Use undefined instead of null to match the expected type
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Use postService to add the post
+      const newPost = await addPost(postData);
+      
+      // Call the callback with the new post
       onPostCreated(newPost);
+      
+      // Reset form
       setContent('');
       setSelectedImages([]);
       setSelectedFeeling(null);
       setIsExpanded(false);
-      setIsSubmitting(false);
       
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
-    }, 500);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert('Failed to create post. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -267,4 +273,4 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
   );
 };
 
-export default PostForm; 
+export default PostForm;

@@ -162,8 +162,27 @@ export interface GalleryPost {
   title: string;
   description: string;
   imageUrl: string;
+  albumCategory?: string;
   event?: string;
   postedDate: string;
   isApproved: boolean;
   postedBy: string;
+  likedBy?: string[];    // Array of user IDs who liked this post
+  bookmarkedBy?: string[]; // Array of user IDs who bookmarked this post
+}
+
+// Add the Donation interface
+export interface Donation {
+  id: string;
+  donorName: string;
+  donorEmail?: string;
+  amount: number;
+  currency: string;
+  purpose: string;
+  category: string;
+  description?: string;
+  isPublic: boolean;
+  donationDate: string;
+  createdAt?: any; // Firestore timestamp
+  updatedAt?: any; // Firestore timestamp
 } 

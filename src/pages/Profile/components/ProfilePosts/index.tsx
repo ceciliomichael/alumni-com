@@ -9,7 +9,7 @@ import {
   toggleCommentReaction,
   deletePost,
   getAllPosts
-} from '../../../Admin/services/localStorage/postService';
+} from '../../../../services/firebase/postService';
 import './styles.css';
 
 interface ProfilePostsProps {
@@ -28,10 +28,14 @@ const ProfilePosts = ({ posts, profileUser, currentUser }: ProfilePostsProps) =>
   
   // Listen for localStorage changes
   useEffect(() => {
-    const handleStorageChange = () => {
-      const allPosts = getAllPosts();
-      const userPosts = allPosts.filter(post => post.userId === profileUser.id);
-      setUpdatedPosts(userPosts);
+    const handleStorageChange = async () => {
+      try {
+        const allPosts = await getAllPosts();
+        const userPosts = allPosts.filter(post => post.userId === profileUser.id);
+        setUpdatedPosts(userPosts);
+      } catch (error) {
+        console.error('Error refreshing posts:', error);
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -40,62 +44,82 @@ const ProfilePosts = ({ posts, profileUser, currentUser }: ProfilePostsProps) =>
     };
   }, [profileUser.id]);
 
-  const handleLikePost = (postId: string) => {
+  const handleLikePost = async (postId: string) => {
     if (!currentUser) return;
     
-    const result = likePost(postId, currentUser.id);
-    if (result) {
-      // Update local state
-      setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
-      
-      // Trigger storage event to update across tabs
-      window.dispatchEvent(new Event('storage'));
+    try {
+      const result = await likePost(postId, currentUser.id);
+      if (result) {
+        // Update local state
+        setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
+        
+        // Trigger storage event to update across tabs
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
     }
   };
 
-  const handleAddComment = (postId: string, comment: Comment) => {
-    const result = addComment(postId, comment);
-    if (result) {
-      // Update local state
-      setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
-      
-      // Trigger storage event to update across tabs
-      window.dispatchEvent(new Event('storage'));
+  const handleAddComment = async (postId: string, comment: Comment) => {
+    try {
+      const result = await addComment(postId, comment);
+      if (result) {
+        // Update local state
+        setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
+        
+        // Trigger storage event to update across tabs
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
     }
   };
 
-  const handleAddReply = (postId: string, commentId: string, reply: Reply) => {
-    const result = addReplyToComment(postId, commentId, reply);
-    if (result) {
-      // Update local state
-      setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
-      
-      // Trigger storage event to update across tabs
-      window.dispatchEvent(new Event('storage'));
+  const handleAddReply = async (postId: string, commentId: string, reply: Reply) => {
+    try {
+      const result = await addReplyToComment(postId, commentId, reply);
+      if (result) {
+        // Update local state
+        setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
+        
+        // Trigger storage event to update across tabs
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
     }
   };
 
-  const handleToggleCommentReaction = (postId: string, commentId: string) => {
+  const handleToggleCommentReaction = async (postId: string, commentId: string) => {
     if (!currentUser) return;
     
-    const result = toggleCommentReaction(postId, commentId, currentUser.id, currentUser.name);
-    if (result) {
-      // Update local state
-      setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
-      
-      // Trigger storage event to update across tabs
-      window.dispatchEvent(new Event('storage'));
+    try {
+      const result = await toggleCommentReaction(postId, commentId, currentUser.id, currentUser.name);
+      if (result) {
+        // Update local state
+        setUpdatedPosts(prev => prev.map(post => post.id === postId ? result : post));
+        
+        // Trigger storage event to update across tabs
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (error) {
+      console.error('Error toggling comment reaction:', error);
     }
   };
 
-  const handleDeletePost = (postId: string) => {
-    const success = deletePost(postId);
-    if (success) {
-      // Update local state
-      setUpdatedPosts(prev => prev.filter(post => post.id !== postId));
-      
-      // Trigger storage event to update across tabs
-      window.dispatchEvent(new Event('storage'));
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const success = await deletePost(postId);
+      if (success) {
+        // Update local state
+        setUpdatedPosts(prev => prev.filter(post => post.id !== postId));
+        
+        // Trigger storage event to update across tabs
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
     }
   };
 
@@ -133,4 +157,4 @@ const ProfilePosts = ({ posts, profileUser, currentUser }: ProfilePostsProps) =>
   );
 };
 
-export default ProfilePosts; 
+export default ProfilePosts;

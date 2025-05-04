@@ -8,11 +8,10 @@ import {
   getAllJobs, 
   searchJobs, 
   deleteJob, 
-  initializeJobData,
   approveJob,
-  getJobsByType
-} from '../../services/localStorage/jobService';
-import { Job } from '../../services/localStorage/jobService';
+  getJobsByType,
+  Job
+} from '../../../../services/firebase/jobService';
 import AdminLayout from '../../layout/AdminLayout';
 import './Jobs.css';
 
@@ -24,56 +23,65 @@ const JobManagement = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeJobData();
-    
     // Load jobs data
     loadJobsData();
   }, []);
 
-  const loadJobsData = () => {
-    let filteredJobs: Job[] = [];
-    
-    // Apply job type filter
-    if (typeFilter === 'all') {
-      filteredJobs = getAllJobs();
-    } else {
-      filteredJobs = getJobsByType(typeFilter);
-    }
-    
-    // Apply approval filter
-    if (approvalFilter !== 'all') {
-      const isApproved = approvalFilter === 'approved';
-      filteredJobs = filteredJobs.filter(job => job.isApproved === isApproved);
-    }
-    
-    // Apply status filter (active/expired)
-    if (statusFilter !== 'all') {
-      const now = new Date();
-      if (statusFilter === 'active') {
-        filteredJobs = filteredJobs.filter(job => {
-          if (!job.deadline) return true; // No deadline means job is always active
-          const deadlineDate = new Date(job.deadline);
-          return deadlineDate >= now;
-        });
+  const loadJobsData = async () => {
+    setLoading(true);
+    try {
+      let filteredJobs: Job[] = [];
+      
+      // Apply job type filter
+      if (typeFilter === 'all') {
+        filteredJobs = await getAllJobs();
       } else {
-        filteredJobs = filteredJobs.filter(job => {
-          if (!job.deadline) return false; // No deadline means job is never expired
-          const deadlineDate = new Date(job.deadline);
-          return deadlineDate < now;
-        });
+        filteredJobs = await getJobsByType(typeFilter);
       }
+      
+      // Apply approval filter
+      if (approvalFilter !== 'all') {
+        const isApproved = approvalFilter === 'approved';
+        filteredJobs = filteredJobs.filter(job => job.isApproved === isApproved);
+      }
+      
+      // Apply status filter (active/expired)
+      if (statusFilter !== 'all') {
+        const now = new Date();
+        if (statusFilter === 'active') {
+          filteredJobs = filteredJobs.filter(job => {
+            if (!job.deadline) return true; // No deadline means job is always active
+            const deadlineDate = new Date(job.deadline);
+            return deadlineDate >= now;
+          });
+        } else {
+          filteredJobs = filteredJobs.filter(job => {
+            if (!job.deadline) return false; // No deadline means job is never expired
+            const deadlineDate = new Date(job.deadline);
+            return deadlineDate < now;
+          });
+        }
+      }
+      
+      // Sort by posted date (newest first)
+      filteredJobs.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
+      
+      setJobs(filteredJobs);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      setJobs([]);
+    } finally {
+      setLoading(false);
     }
-    
-    // Sort by posted date (newest first)
-    filteredJobs.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
-    
-    setJobs(filteredJobs);
   };
 
   useEffect(() => {
-    loadJobsData();
+    if (!loading) {
+      loadJobsData();
+    }
   }, [typeFilter, approvalFilter, statusFilter]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,23 +93,49 @@ const JobManagement = () => {
   useEffect(() => {
     // Apply search filter
     if (searchQuery.trim()) {
-      const results = searchJobs(searchQuery);
-      setJobs(results);
-    } else {
+      const fetchSearchResults = async () => {
+        try {
+          setLoading(true);
+          const results = await searchJobs(searchQuery);
+          setJobs(results);
+        } catch (error) {
+          console.error('Error searching jobs:', error);
+          setJobs([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchSearchResults();
+    } else if (!loading) {
       loadJobsData();
     }
-  }, [searchQuery, typeFilter, approvalFilter, statusFilter]);
+  }, [searchQuery]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this job posting?')) {
-      deleteJob(id);
-      loadJobsData();
+      try {
+        setLoading(true);
+        await deleteJob(id);
+        await loadJobsData();
+      } catch (error) {
+        console.error('Error deleting job:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleApprove = (id: string, approve: boolean) => {
-    approveJob(id, approve);
-    loadJobsData();
+  const handleApprove = async (id: string, approve: boolean) => {
+    try {
+      setLoading(true);
+      await approveJob(id, approve);
+      await loadJobsData();
+    } catch (error) {
+      console.error('Error updating job approval status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -212,6 +246,9 @@ const JobManagement = () => {
           <div>{jobs.length} Jobs Found</div>
         </div>
         
+        {loading ? (
+          <div className="admin-loading">Loading jobs...</div>
+        ) : (
         <div className="admin-jobs-grid">
           {jobs.length > 0 ? (
             jobs.map(job => (
@@ -327,9 +364,10 @@ const JobManagement = () => {
             </div>
           )}
         </div>
+        )}
       </div>
     </AdminLayout>
   );
 };
 
-export default JobManagement; 
+export default JobManagement;

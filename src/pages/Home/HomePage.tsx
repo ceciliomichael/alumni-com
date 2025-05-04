@@ -14,8 +14,8 @@ import {
   addReplyToComment,
   toggleCommentReaction,
   deletePost
-} from '../Admin/services/localStorage/postService';
-import { getCurrentUser } from '../Admin/services/localStorage/userService';
+} from '../../services/firebase/postService';
+import { getCurrentUser } from '../../services/firebase/userService';
 
 interface HomePageProps {
   user: User | null;
@@ -29,13 +29,24 @@ const HomePage = ({ user }: HomePageProps) => {
   
   // Load posts on component mount
   useEffect(() => {
-    initializePostData();
-    loadPosts();
+    const init = async () => {
+      try {
+        await initializePostData();
+        await loadPosts();
+      } catch (error) {
+        console.error('Error initializing posts:', error);
+      }
+    };
+    
+    init();
   }, []);
   
   // Update local user state when props change
   useEffect(() => {
-    setCurrentUser(user);
+    if (user) {
+      // Ensure the user object matches the expected type
+      setCurrentUser(user as User);
+    }
   }, [user]);
   
   // Listen for storage events to update user data when it changes
@@ -44,7 +55,8 @@ const HomePage = ({ user }: HomePageProps) => {
       if (e.key === 'currentUser') {
         const updatedUser = getCurrentUser();
         if (updatedUser) {
-          setCurrentUser(updatedUser);
+          // Ensure the user object matches the expected type
+          setCurrentUser(updatedUser as unknown as User);
         }
       }
     };
@@ -55,72 +67,91 @@ const HomePage = ({ user }: HomePageProps) => {
     };
   }, []);
 
-  const loadPosts = () => {
+  const loadPosts = async () => {
     setIsLoading(true);
     
-    // Simulate network delay
-    setTimeout(() => {
-      const allPosts = getAllPosts();
+    try {
+      const allPosts = await getAllPosts();
       // Sort by most recent
       const sortedPosts = [...allPosts].sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
       setPosts(sortedPosts);
+    } catch (error) {
+      console.error('Error loading posts:', error);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   const handleCreatePost = (newPost: Post) => {
     setPosts((prevPosts) => [newPost, ...prevPosts]);
   };
 
-  const handleLikePost = (postId: string) => {
+  const handleLikePost = async (postId: string) => {
     if (!currentUser) return; // Ensure user is logged in
-    const updatedPost = likePost(postId, currentUser.id); // Pass user.id
-    if (updatedPost) {
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId ? updatedPost : post
-        )
-      );
+    
+    try {
+      const updatedPost = await likePost(postId, currentUser.id); // Pass user.id
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId ? updatedPost : post
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
     }
   };
 
-  const handleAddComment = (postId: string, comment: any) => {
-    const updatedPost = addComment(postId, comment);
-    if (updatedPost) {
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId ? updatedPost : post
-        )
-      );
+  const handleAddComment = async (postId: string, comment: any) => {
+    try {
+      const updatedPost = await addComment(postId, comment);
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId ? updatedPost : post
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
     }
   };
   
   // Add handler for adding a reply to a comment
-  const handleAddReply = (postId: string, commentId: string, reply: any) => {
-    const updatedPost = addReplyToComment(postId, commentId, reply);
-    if (updatedPost) {
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId ? updatedPost : post
-        )
-      );
+  const handleAddReply = async (postId: string, commentId: string, reply: any) => {
+    try {
+      const updatedPost = await addReplyToComment(postId, commentId, reply);
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId ? updatedPost : post
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error adding reply:', error);
     }
   };
 
   // Add handler for toggling a reaction on a comment
-  const handleCommentReaction = (postId: string, commentId: string) => {
+  const handleCommentReaction = async (postId: string, commentId: string) => {
     if (!currentUser) return;
     
-    const updatedPost = toggleCommentReaction(postId, commentId, currentUser.id, currentUser.name);
-    if (updatedPost) {
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId ? updatedPost : post
-        )
-      );
+    try {
+      const updatedPost = await toggleCommentReaction(postId, commentId, currentUser.id, currentUser.name);
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId ? updatedPost : post
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling comment reaction:', error);
     }
   };
   
@@ -128,12 +159,12 @@ const HomePage = ({ user }: HomePageProps) => {
     loadPosts();
   };
   
-  const toggleFeedView = (view: 'all' | 'following') => {
+  const toggleFeedView = async (view: 'all' | 'following') => {
     setFeedView(view);
     setIsLoading(true);
     
-    setTimeout(() => {
-      const allPosts = getAllPosts();
+    try {
+      const allPosts = await getAllPosts();
       let filteredPosts = [...allPosts];
       
       if (view === 'following' && currentUser) {
@@ -148,8 +179,11 @@ const HomePage = ({ user }: HomePageProps) => {
       );
       
       setPosts(filteredPosts);
+    } catch (error) {
+      console.error('Error toggling feed view:', error);
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
   
   const focusPostInput = () => {
@@ -160,9 +194,18 @@ const HomePage = ({ user }: HomePageProps) => {
   };
 
   // Add handler for deleting posts
-  const handleDeletePost = (postId: string) => {
-    // Remove the post from state
-    setPosts((prevPosts) => prevPosts.filter(post => post.id !== postId));
+  const handleDeletePost = async (postId: string) => {
+    try {
+      // Delete the post from Firebase
+      const success = await deletePost(postId);
+      
+      if (success) {
+        // Remove the post from state
+        setPosts((prevPosts) => prevPosts.filter(post => post.id !== postId));
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
   };
 
   return (
@@ -236,4 +279,4 @@ const HomePage = ({ user }: HomePageProps) => {
   );
 };
 
-export default HomePage; 
+export default HomePage;

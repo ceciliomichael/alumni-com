@@ -1,5 +1,8 @@
-import { Heart, Bookmark, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { Heart, Bookmark, Calendar, Loader } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { db } from '../../../../firebase/config';
+import { getCurrentUser } from '../../../../services/firebase/userService';
 import './GalleryCard.css';
 
 interface GalleryImage {
@@ -19,15 +22,111 @@ const GalleryCard = ({ image }: GalleryCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const handleLike = (e: React.MouseEvent) => {
+  // Fetch current user and check if user has liked/bookmarked this image
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setUserId(user.id);
+          
+          // Check if user has liked this image
+          const galleryRef = doc(db, 'gallery_items', image.id);
+          const galleryDoc = await getDoc(galleryRef);
+          
+          if (galleryDoc.exists()) {
+            const data = galleryDoc.data();
+            // Check if likedBy array contains current user ID
+            if (data.likedBy && Array.isArray(data.likedBy)) {
+              setLiked(data.likedBy.includes(user.id));
+            }
+            
+            // Check if bookmarkedBy array contains current user ID
+            if (data.bookmarkedBy && Array.isArray(data.bookmarkedBy)) {
+              setBookmarked(data.bookmarkedBy.includes(user.id));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    
+    fetchUserData();
+  }, [image.id]);
+
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setLiked(!liked);
+    
+    if (!userId) {
+      alert('Please sign in to like photos');
+      return;
+    }
+    
+    setIsLikeLoading(true);
+    
+    try {
+      const galleryRef = doc(db, 'gallery_items', image.id);
+      
+      if (liked) {
+        // Remove like
+        await updateDoc(galleryRef, {
+          likedBy: arrayRemove(userId)
+        });
+      } else {
+        // Add like
+        await updateDoc(galleryRef, {
+          likedBy: arrayUnion(userId)
+        });
+      }
+      
+      // Toggle local state
+      setLiked(!liked);
+    } catch (error) {
+      console.error('Error updating like status:', error);
+      alert('Failed to update like status. Please try again.');
+    } finally {
+      setIsLikeLoading(false);
+    }
   };
 
-  const handleBookmark = (e: React.MouseEvent) => {
+  const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setBookmarked(!bookmarked);
+    
+    if (!userId) {
+      alert('Please sign in to bookmark photos');
+      return;
+    }
+    
+    setIsBookmarkLoading(true);
+    
+    try {
+      const galleryRef = doc(db, 'gallery_items', image.id);
+      
+      if (bookmarked) {
+        // Remove bookmark
+        await updateDoc(galleryRef, {
+          bookmarkedBy: arrayRemove(userId)
+        });
+      } else {
+        // Add bookmark
+        await updateDoc(galleryRef, {
+          bookmarkedBy: arrayUnion(userId)
+        });
+      }
+      
+      // Toggle local state
+      setBookmarked(!bookmarked);
+    } catch (error) {
+      console.error('Error updating bookmark status:', error);
+      alert('Failed to update bookmark status. Please try again.');
+    } finally {
+      setIsBookmarkLoading(false);
+    }
   };
 
   return (
@@ -44,15 +143,25 @@ const GalleryCard = ({ image }: GalleryCardProps) => {
               className={`overlay-btn ${liked ? 'active' : ''}`}
               onClick={handleLike}
               aria-label="Like image"
+              disabled={isLikeLoading}
             >
-              <Heart size={18} />
+              {isLikeLoading ? (
+                <Loader size={18} className="animate-spin" />
+              ) : (
+                <Heart size={18} />
+              )}
             </button>
             <button 
               className={`overlay-btn ${bookmarked ? 'active' : ''}`}
               onClick={handleBookmark}
               aria-label="Bookmark image"
+              disabled={isBookmarkLoading}
             >
-              <Bookmark size={18} />
+              {isBookmarkLoading ? (
+                <Loader size={18} className="animate-spin" />
+              ) : (
+                <Bookmark size={18} />
+              )}
             </button>
           </div>
         </div>

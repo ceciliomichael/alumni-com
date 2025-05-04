@@ -5,12 +5,11 @@ import {
   getAllEvents, 
   searchEvents, 
   deleteEvent, 
-  initializeEventData,
   approveEvent,
   getUpcomingEvents,
-  getPastEvents
-} from '../../services/localStorage/eventService';
-import { Event } from '../../services/localStorage/eventService';
+  getPastEvents,
+  Event
+} from '../../../../services/firebase/eventService';
 import AdminLayout from '../../layout/AdminLayout';
 import './Events.css';
 
@@ -21,37 +20,46 @@ const EventManagement = () => {
   const [approvalFilter, setApprovalFilter] = useState<'all' | 'approved' | 'pending'>('all');
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeEventData();
-    
     // Load events data
     loadEventsData();
   }, []);
 
-  const loadEventsData = () => {
-    let filteredEvents: Event[] = [];
-    
-    // Apply time filter
-    if (filter === 'upcoming') {
-      filteredEvents = getUpcomingEvents();
-    } else if (filter === 'past') {
-      filteredEvents = getPastEvents();
-    } else {
-      filteredEvents = getAllEvents();
+  const loadEventsData = async () => {
+    setLoading(true);
+    try {
+      let filteredEvents: Event[] = [];
+      
+      // Apply time filter
+      if (filter === 'upcoming') {
+        filteredEvents = await getUpcomingEvents();
+      } else if (filter === 'past') {
+        filteredEvents = await getPastEvents();
+      } else {
+        filteredEvents = await getAllEvents();
+      }
+      
+      // Apply approval filter
+      if (approvalFilter !== 'all') {
+        const isApproved = approvalFilter === 'approved';
+        filteredEvents = filteredEvents.filter(event => event.isApproved === isApproved);
+      }
+      
+      setEvents(filteredEvents);
+    } catch (error) {
+      console.error('Error loading events:', error);
+      setEvents([]);
+    } finally {
+      setLoading(false);
     }
-    
-    // Apply approval filter
-    if (approvalFilter !== 'all') {
-      const isApproved = approvalFilter === 'approved';
-      filteredEvents = filteredEvents.filter(event => event.isApproved === isApproved);
-    }
-    
-    setEvents(filteredEvents);
   };
 
   useEffect(() => {
-    loadEventsData();
+    if (!loading) {
+      loadEventsData();
+    }
   }, [filter, approvalFilter]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,23 +71,49 @@ const EventManagement = () => {
   useEffect(() => {
     // Apply search filter
     if (searchQuery.trim()) {
-      const results = searchEvents(searchQuery);
-      setEvents(results);
-    } else {
+      const fetchSearchResults = async () => {
+        try {
+          setLoading(true);
+          const results = await searchEvents(searchQuery);
+          setEvents(results);
+        } catch (error) {
+          console.error('Error searching events:', error);
+          setEvents([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchSearchResults();
+    } else if (!loading) {
       loadEventsData();
     }
-  }, [searchQuery, filter, approvalFilter]);
+  }, [searchQuery]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this event?')) {
-      deleteEvent(id);
-      loadEventsData();
+      try {
+        setLoading(true);
+        await deleteEvent(id);
+        await loadEventsData();
+      } catch (error) {
+        console.error('Error deleting event:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleApprove = (id: string, approve: boolean) => {
-    approveEvent(id, approve);
-    loadEventsData();
+  const handleApprove = async (id: string, approve: boolean) => {
+    try {
+      setLoading(true);
+      await approveEvent(id, approve);
+      await loadEventsData();
+    } catch (error) {
+      console.error('Error updating event approval status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -149,6 +183,9 @@ const EventManagement = () => {
           <div>{events.length} Events Found</div>
         </div>
         
+        {loading ? (
+          <div className="admin-loading">Loading events...</div>
+        ) : (
         <div className="admin-events-grid">
           {events.length > 0 ? (
             events.map(event => (
@@ -239,9 +276,10 @@ const EventManagement = () => {
             </div>
           )}
         </div>
+        )}
       </div>
     </AdminLayout>
   );
 };
 
-export default EventManagement; 
+export default EventManagement;

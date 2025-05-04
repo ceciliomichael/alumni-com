@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Search, Briefcase, Filter, MapPin, Calendar, Clock, Mail, Link, Plus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Briefcase, Filter, MapPin, Calendar, Clock, Mail, Link, Plus, Upload, Image } from 'lucide-react';
+import { fileToBase64, resizeImage, validateImageFile } from '../../services/firebase/storageService';
 import './Jobs.css';
 import { 
   getAllJobs, 
   getActiveJobs,
-  addJob
-} from '../Admin/services/localStorage/jobService';
-import { Job } from '../Admin/services/localStorage/jobService';
-import { getCurrentUser } from '../Admin/services/localStorage/userService';
+  addJob,
+  Job
+} from '../../services/firebase/jobService';
+import { getCurrentUser } from '../../services/firebase/userService';
 
 const JobsPage = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -25,21 +26,39 @@ const JobsPage = () => {
     salary: '',
     applicationType: 'email' as 'email' | 'website' | 'inPerson',
     applicationUrl: '',
-    deadline: ''
+    deadline: '',
+    companyLogo: ''
   });
+  
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadJobs();
   }, []);
 
-  const loadJobs = () => {
-    // Get all approved jobs
-    const allJobs = getAllJobs().filter(job => job.isApproved);
-    
-    // Sort by posted date (newest first)
-    allJobs.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
-    
-    setJobs(allJobs);
+  const loadJobs = async () => {
+    setLoading(true);
+    try {
+      // Get all jobs
+      const allJobs = await getAllJobs();
+      
+      // Filter for approved jobs only
+      const approvedJobs = allJobs.filter(job => job.isApproved);
+      
+      // Sort by posted date (newest first)
+      approvedJobs.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
+      
+      setJobs(approvedJobs);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Format date helper
@@ -75,8 +94,8 @@ const JobsPage = () => {
     }
   });
 
-  const handleCreateJob = () => {
-    const currentUser = getCurrentUser();
+  const handleCreateJob = async () => {
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       alert('You must be logged in to post a job.');
       return;
@@ -93,11 +112,31 @@ const JobsPage = () => {
       [name]: value
     }));
   };
+  
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      
+      // Validate file
+      const validation = validateImageFile(file, 2); // 2MB max for logos
+      if (!validation.valid) {
+        alert(validation.message);
+        return;
+      }
+      
+      setUploadFile(file);
+      
+      // Create preview URL
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+    }
+  };
 
-  const handleJobSubmit = (e: React.FormEvent) => {
+  const handleJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const currentUser = getCurrentUser();
+    const currentUser = await getCurrentUser();
     if (!currentUser) {
       alert('You must be logged in to post a job');
       return;
@@ -109,35 +148,53 @@ const JobsPage = () => {
       deadlineDate = new Date(jobFormData.deadline).toISOString();
     }
     
-    // Create the job object
-    const newJob = {
-      ...jobFormData,
-      deadline: deadlineDate,
-      isApproved: false, // Jobs require admin approval
-      postedBy: currentUser.id
-    };
-    
-    // Add the job
-    addJob(newJob);
-    
-    // Close the modal and reset form
-    setShowCreateJobModal(false);
-    setJobFormData({
-      title: '',
-      company: '',
-      location: '',
-      description: '',
-      requirements: '',
-      contactEmail: '',
-      jobType: 'fullTime',
-      salary: '',
-      applicationType: 'email',
-      applicationUrl: '',
-      deadline: ''
-    });
-    
-    // Show confirmation
-    alert('Your job posting has been submitted and is pending approval.');
+    try {
+      // Process the uploaded logo if any
+      let logoData = jobFormData.companyLogo;
+      if (uploadFile) {
+        // Resize and convert to base64 with more aggressive compression
+        logoData = await resizeImage(uploadFile, 400, 400, 0.6, true);
+      }
+      
+      // Create the job object
+      const newJob = {
+        ...jobFormData,
+        deadline: deadlineDate,
+        isApproved: false, // Jobs require admin approval
+        postedBy: currentUser.id,
+        companyLogo: logoData
+      };
+      
+      // Add the job
+      await addJob(newJob);
+      
+      // Close the modal and reset form
+      setShowCreateJobModal(false);
+      setJobFormData({
+        title: '',
+        company: '',
+        location: '',
+        description: '',
+        requirements: '',
+        contactEmail: '',
+        jobType: 'fullTime',
+        salary: '',
+        applicationType: 'email',
+        applicationUrl: '',
+        deadline: '',
+        companyLogo: ''
+      });
+      
+      // Reset file upload state
+      setUploadFile(null);
+      setPreviewUrl('');
+      
+      // Show confirmation
+      alert('Your job posting has been submitted and is pending approval.');
+    } catch (error) {
+      console.error('Error submitting job:', error);
+      alert('There was an error submitting your job posting. Please try again.');
+    }
   };
 
   const getJobTypeLabel = (jobType: Job['jobType']) => {
@@ -219,19 +276,31 @@ const JobsPage = () => {
       </div>
 
       <div className="jobs-list">
-        {filteredJobs.length > 0 ? (
+        {loading ? (
+          <div className="loading-jobs">
+            <div className="loading-spinner"></div>
+            <p>Loading job opportunities...</p>
+          </div>
+        ) : filteredJobs.length > 0 ? (
           filteredJobs.map(job => (
-            <div key={job.id} className="job-card">
-              <div className="job-card-header">
-                <div className="job-title-area">
-                  <h3 className="job-title">{job.title}</h3>
-                  <div className="job-meta">
-                    <span className="job-type">{getJobTypeLabel(job.jobType)}</span>
-                    {!isJobActive(job) && <span className="job-expired">Expired</span>}
+              <div key={job.id} className="job-card">
+                <div className="job-card-header">
+                  <div className="job-title-area">
+                    <h3 className="job-title">{job.title}</h3>
+                    <div className="job-meta">
+                      <span className="job-type">{getJobTypeLabel(job.jobType)}</span>
+                      {!isJobActive(job) && <span className="job-expired">Expired</span>}
+                    </div>
+                  </div>
+                  <div className="job-company-section">
+                    {job.companyLogo && (
+                      <div className="job-company-logo">
+                        <img src={job.companyLogo} alt={`${job.company} logo`} />
+                      </div>
+                    )}
+                    <a href="#" className="job-company">{job.company}</a>
                   </div>
                 </div>
-                <a href="#" className="job-company">{job.company}</a>
-              </div>
               
               <div className="job-details">
                 {job.location && (
@@ -346,6 +415,38 @@ const JobsPage = () => {
                   onChange={handleJobFormChange}
                   required
                 />
+              </div>
+              
+              <div className="form-group">
+                <label>Company Logo (Optional)</label>
+                <div className="upload-container">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+                  <button 
+                    type="button" 
+                    className="upload-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload size={16} />
+                    Select Logo
+                  </button>
+                  {uploadFile && (
+                    <div className="selected-file">
+                      <span>{uploadFile.name}</span>
+                      <span className="file-size">({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  )}
+                </div>
+                {previewUrl && (
+                  <div className="logo-preview">
+                    <img src={previewUrl} alt="Company logo preview" />
+                  </div>
+                )}
               </div>
               
               <div className="form-group">
@@ -485,4 +586,4 @@ const JobsPage = () => {
   );
 };
 
-export default JobsPage; 
+export default JobsPage;

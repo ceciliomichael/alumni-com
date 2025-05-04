@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
-import { loginUser } from '../Admin/services/localStorage/userService';
-import { User as ServiceUser } from '../Admin/services/localStorage/userService';
+import { loginUser } from '../../services/firebase/userService';
+import { User as ServiceUser } from '../../services/firebase/userService';
 import './Auth.css';
 
 interface LoginPageProps {
@@ -52,7 +52,7 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -61,21 +61,27 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
     
     setIsSubmitting(true);
     
-    // Login using localStorage service
-    const user = loginUser(formData.email, formData.password);
-    
-    if (user) {
-      // Successful login
-      // Call the handler passed from App.tsx
-      onLoginSuccess(user);
+    try {
+      // Login using Firebase service
+      const user = await loginUser(formData.email, formData.password);
       
-      setIsSubmitting(false);
-      navigate('/'); // Redirect to home page after login
-    } else {
-      // Failed login
+      if (user) {
+        // Successful login
+        // Call the handler passed from App.tsx
+        onLoginSuccess(user);
+        navigate('/'); // Redirect to home page after login
+      } else {
+        // Failed login
+        setErrors({
+          password: 'Invalid credentials or your account is not yet approved'
+        });
+      }
+    } catch (error) {
+      console.error('Error logging in:', error);
       setErrors({
-        password: 'Invalid credentials or your account is not yet approved'
+        password: 'An error occurred during login. Please try again.'
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -184,4 +190,4 @@ const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
   );
 };
 
-export default LoginPage; 
+export default LoginPage;

@@ -1,7 +1,7 @@
 import { useState, ChangeEvent, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Mail, Lock, User, GraduationCap, Camera, Image } from 'lucide-react';
-import { registerUser } from '../Admin/services/localStorage/userService';
+import { registerUser } from '../../services/firebase/userService';
 import './Auth.css';
 
 const RegisterPage = () => {
@@ -39,7 +39,7 @@ const RegisterPage = () => {
   // Function to crop image to desired aspect ratio
   const cropImage = (imageData: string, type: 'profile' | 'cover'): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image();
+      const img = new window.Image() as HTMLImageElement;
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -227,7 +227,7 @@ const RegisterPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -236,38 +236,46 @@ const RegisterPage = () => {
     
     setIsSubmitting(true);
     
-    // Register user using our localStorage service
-    const userData = {
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      batch: formData.batch,
-      profileImage: profileImage || undefined,
-      coverPhoto: coverPhoto || undefined,
-      // Initialize with empty values for optional fields
-      bio: '',
-      job: '',
-      company: '',
-      location: '',
-      socialLinks: {
-        linkedin: '',
-        twitter: '',
-        website: ''
+    try {
+      // Register user using our Firebase service
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        batch: formData.batch,
+        profileImage: profileImage || undefined,
+        coverPhoto: coverPhoto || undefined,
+        // Initialize with empty values for optional fields
+        bio: '',
+        job: '',
+        company: '',
+        location: '',
+        socialLinks: {
+          linkedin: '',
+          twitter: '',
+          website: ''
+        }
+      };
+      
+      const newUser = await registerUser(userData);
+      
+      if (newUser) {
+        // Registration successful
+        setRegistrationSuccess(true);
+      } else {
+        // Email already exists
+        setErrors(prev => ({
+          ...prev,
+          email: 'Email is already registered'
+        }));
       }
-    };
-    
-    const newUser = registerUser(userData);
-    
-    if (newUser) {
-      // Registration successful
-      setIsSubmitting(false);
-      setRegistrationSuccess(true);
-    } else {
-      // Email already exists
+    } catch (error) {
+      console.error('Error registering user:', error);
       setErrors(prev => ({
         ...prev,
-        email: 'Email is already registered'
+        general: 'An error occurred during registration. Please try again.'
       }));
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -491,4 +499,4 @@ const RegisterPage = () => {
   );
 };
 
-export default RegisterPage; 
+export default RegisterPage;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Filter, ChevronDown, Search, Zap } from 'lucide-react';
-// Use the same service as Admin for consistency (adjust path if needed)
-import { getAllEvents, Event as EventType } from '../Admin/services/localStorage/eventService'; 
+// Use the Firestore service
+import { getAllEvents, Event as EventType } from '../../services/firebase/eventService'; 
 import ImagePlaceholder from '../../components/ImagePlaceholder';
 import './Events.css';
 
@@ -25,20 +25,21 @@ const EventsPage = () => {
 
   // Fetch and filter events on initial load
   useEffect(() => {
-    setIsLoading(true);
-    try {
-      const fetchedEvents = getAllEvents();
-      const approvedEvents = fetchedEvents.filter(event => event.isApproved);
-      setAllApprovedEvents(approvedEvents);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      setAllApprovedEvents([]); // Set to empty on error
-    } finally {
-      // Simulate loading time if needed, or just set loading false
-      const timer = setTimeout(() => setIsLoading(false), 500); // Shorter delay now
-      return () => clearTimeout(timer);
-      // setIsLoading(false); // Alternatively, remove simulation
-    }
+    const fetchEvents = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedEvents = await getAllEvents();
+        const approvedEvents = fetchedEvents.filter(event => event.isApproved);
+        setAllApprovedEvents(approvedEvents);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        setAllApprovedEvents([]); // Set to empty on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEvents();
   }, []);
 
   // Filter events based on search term AND active tab
@@ -228,4 +229,4 @@ const EventsPage = () => {
   );
 };
 
-export default EventsPage; 
+export default EventsPage;

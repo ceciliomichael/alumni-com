@@ -6,7 +6,7 @@ import {
   searchAlumni, 
   deleteAlumni, 
   initializeAlumniData 
-} from '../../services/localStorage/alumniService';
+} from '../../../../services/firebase/alumniService';
 import { AlumniRecord } from '../../../../types';
 import AdminLayout from '../../layout/AdminLayout';
 
@@ -65,34 +65,41 @@ const AlumniRecords = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Initialize sample data if empty
-    initializeAlumniData();
+    const init = async () => {
+      try {
+        // Initialize sample data if empty
+        await initializeAlumniData();
+        
+        // Load alumni data
+        await loadAlumniData();
+      } catch (error) {
+        console.error('Error initializing data:', error);
+      }
+    };
     
-    // Load alumni data
-    loadAlumniData();
+    init();
   }, []);
 
-  const loadAlumniData = () => {
+  const loadAlumniData = async () => {
     setLoading(true);
-    const allAlumni = getAllAlumni();
-    setAlumni(allAlumni);
-    
-    // Extract unique batch years
-    const batches = [...new Set(allAlumni.map(a => a.batch))];
-    setUniqueBatches(batches);
-    setLoading(false);
+    try {
+      const allAlumni = await getAllAlumni();
+      setAlumni(allAlumni);
+      
+      // Extract unique batch years
+      const batches = [...new Set(allAlumni.map(a => a.batch))];
+      setUniqueBatches(batches);
+    } catch (error) {
+      console.error('Error loading alumni data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
-    if (query.trim()) {
-      const results = searchAlumni(query);
-      setAlumni(results);
-    } else {
-      loadAlumniData();
-    }
+    // The useEffect hook will handle the filtering
   };
 
   const openDeleteDialog = (alumni: AlumniRecord) => {
@@ -111,42 +118,56 @@ const AlumniRecords = () => {
     });
   };
   
-  const confirmDelete = () => {
-    deleteAlumni(deleteDialog.alumniId);
-    loadAlumniData();
-    closeDeleteDialog();
+  const confirmDelete = async () => {
+    try {
+      await deleteAlumni(deleteDialog.alumniId);
+      await loadAlumniData();
+    } catch (error) {
+      console.error('Error deleting alumni:', error);
+    } finally {
+      closeDeleteDialog();
+    }
   };
 
-  const applyFilters = () => {
+  const applyFilters = async () => {
     setLoading(true);
-    let filteredAlumni = getAllAlumni();
-    
-    // Apply batch filter
-    if (batchFilter !== 'all') {
-      filteredAlumni = filteredAlumni.filter(alumni => alumni.batch === batchFilter);
+    try {
+      let filteredAlumni: AlumniRecord[] = [];
+      
+      // If there's a search query, use the searchAlumni function
+      if (searchQuery.trim()) {
+        filteredAlumni = await searchAlumni(searchQuery);
+      } else {
+        // Otherwise, get all alumni
+        filteredAlumni = await getAllAlumni();
+      }
+      
+      // Apply batch filter
+      if (batchFilter !== 'all') {
+        filteredAlumni = filteredAlumni.filter(alumni => alumni.batch === batchFilter);
+      }
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        const isActive = statusFilter === 'active';
+        filteredAlumni = filteredAlumni.filter(alumni => alumni.isActive === isActive);
+      }
+      
+      setAlumni(filteredAlumni);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      const isActive = statusFilter === 'active';
-      filteredAlumni = filteredAlumni.filter(alumni => alumni.isActive === isActive);
-    }
-    
-    // Apply search query if it exists
-    if (searchQuery.trim()) {
-      filteredAlumni = filteredAlumni.filter(alumni => 
-        alumni.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        alumni.email.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    setAlumni(filteredAlumni);
-    setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    applyFilters();
-  }, [batchFilter, statusFilter]);
+    const filterData = async () => {
+      await applyFilters();
+    };
+    filterData();
+  }, [batchFilter, statusFilter, searchQuery]);
 
   const getInitials = (name: string): string => {
     return name
@@ -173,26 +194,26 @@ const AlumniRecords = () => {
             </div>
             
             <div className="filter-container">
-              <select 
-                className="filter-select"
-                value={batchFilter}
-                onChange={(e) => setBatchFilter(e.target.value)}
-              >
-                <option value="all">All Batches</option>
-                {uniqueBatches.map(batch => (
-                  <option key={batch} value={batch}>Batch {batch}</option>
-                ))}
-              </select>
+                <select 
+                  className="filter-select"
+                  value={batchFilter}
+                  onChange={(e) => setBatchFilter(e.target.value)}
+                >
+                  <option value="all">All Batches</option>
+                  {uniqueBatches.map(batch => (
+                    <option key={batch} value={batch}>Batch {batch}</option>
+                  ))}
+                </select>
               
-              <select 
-                className="filter-select"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+                <select 
+                  className="filter-select"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               
               <Link to="/admin/alumni-records/by-batch" className="filter-button">
                 <Filter size={18} />
@@ -229,17 +250,17 @@ const AlumniRecords = () => {
           ) : alumni.length > 0 ? (
             <div className="admin-table-container">
               <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Batch</th>
-                    <th>Status</th>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Batch</th>
+                  <th>Status</th>
                     <th>Registered</th>
                     <th>Options</th>
-                  </tr>
-                </thead>
-                <tbody>
+                </tr>
+              </thead>
+              <tbody>
                   {alumni.map(alum => (
                     <tr key={alum.id}>
                       <td>
@@ -300,21 +321,21 @@ const AlumniRecords = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="empty-state">
-              <div className="empty-icon">
+                ) : (
+                      <div className="empty-state">
+                        <div className="empty-icon">
                 <User size={32} />
-              </div>
+                        </div>
               <h3>No Alumni Records Found</h3>
-              <p>Start by adding a new alumni record or approve pending registrations.</p>
+                        <p>Start by adding a new alumni record or approve pending registrations.</p>
               <button 
                 className="primary-btn"
                 onClick={() => navigate('/admin/alumni-records/add')}
               >
                 Add Alumni
               </button>
-            </div>
-          )}
+                      </div>
+                )}
         </div>
       </div>
       
@@ -328,4 +349,4 @@ const AlumniRecords = () => {
   );
 };
 
-export default AlumniRecords; 
+export default AlumniRecords;

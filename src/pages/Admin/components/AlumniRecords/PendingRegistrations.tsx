@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   getAllAlumni, 
   approveAlumniWithUser
-} from '../../services/localStorage/alumniService';
+} from '../../../../services/firebase/alumniService';
 import { AlumniRecord } from '../../../../types';
 import AdminLayout from '../../layout/AdminLayout';
 
@@ -16,25 +16,40 @@ const PendingRegistrations = () => {
     loadPendingRegistrations();
   }, []);
 
-  const loadPendingRegistrations = () => {
-    const allAlumni = getAllAlumni();
-    // Filter to only show inactive (pending) alumni
-    const pending = allAlumni.filter(a => !a.isActive);
-    setPendingAlumni(pending);
-  };
-
-  const handleApprove = (id: string) => {
-    if (window.confirm('Approve this registration?')) {
-      // Use our connected service to approve both alumni and user records
-      approveAlumniWithUser(id);
-      loadPendingRegistrations();
+  const loadPendingRegistrations = async () => {
+    try {
+      const allAlumni = await getAllAlumni();
+      // Filter to only show inactive (pending) alumni
+      const pending = allAlumni.filter(a => !a.isActive);
+      setPendingAlumni(pending);
+    } catch (error) {
+      console.error('Error loading pending registrations:', error);
+      setPendingAlumni([]);
     }
   };
 
-  const handleReject = (id: string) => {
+  const handleApprove = async (id: string) => {
+    if (window.confirm('Approve this registration?')) {
+      try {
+        // Use our connected service to approve both alumni and user records
+        await approveAlumniWithUser(id);
+        await loadPendingRegistrations();
+      } catch (error) {
+        console.error('Error approving alumni:', error);
+        alert('An error occurred while approving the registration. Please try again.');
+      }
+    }
+  };
+
+  const handleReject = async (id: string) => {
     if (window.confirm('Reject this registration? This will delete the record.')) {
-      // For now just load the data again - we'd need to implement reject functionality
-      loadPendingRegistrations();
+      try {
+        // For now just load the data again - we'd need to implement reject functionality
+        await loadPendingRegistrations();
+      } catch (error) {
+        console.error('Error rejecting alumni:', error);
+        alert('An error occurred while rejecting the registration. Please try again.');
+      }
     }
   };
 
@@ -142,4 +157,4 @@ const PendingRegistrations = () => {
   );
 };
 
-export default PendingRegistrations; 
+export default PendingRegistrations;
