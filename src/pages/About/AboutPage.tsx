@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Info, FileText, Users, MapPin, Mail, Phone, Building, ChevronRight } from 'lucide-react';
+import { Info, FileText, Users, MapPin, Mail, Phone, Building, ChevronRight, Check } from 'lucide-react';
 import ImagePlaceholder from '../../components/ImagePlaceholder';
+import { addContactMessage } from '../Admin/services/localStorage/contactService';
 import './About.css';
 
 type TabType = 'history' | 'vision' | 'organization' | 'contact';
@@ -12,6 +13,23 @@ interface AboutPageProps {
 const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [isLoading, setIsLoading] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Form state
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  
+  // Form validation
+  const [formErrors, setFormErrors] = useState({
+    name: false,
+    email: false,
+    subject: false,
+    message: false
+  });
   
   // Update active tab when initialTab prop changes
   useEffect(() => {
@@ -19,6 +37,66 @@ const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+  
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setContactForm(prev => ({
+      ...prev,
+      [id]: value
+    }));
+    
+    // Clear error for this field if it has a value
+    if (value.trim() !== '') {
+      setFormErrors(prev => ({
+        ...prev,
+        [id]: false
+      }));
+    }
+  };
+  
+  // Handle form submission
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Simple validation
+    const errors = {
+      name: contactForm.name.trim() === '',
+      email: contactForm.email.trim() === '' || !contactForm.email.includes('@'),
+      subject: contactForm.subject.trim() === '',
+      message: contactForm.message.trim() === ''
+    };
+    
+    setFormErrors(errors);
+    
+    // If there are errors, don't submit
+    if (Object.values(errors).some(error => error)) {
+      return;
+    }
+    
+    // Submit the form data to localStorage
+    addContactMessage({
+      name: contactForm.name,
+      email: contactForm.email,
+      subject: contactForm.subject,
+      message: contactForm.message
+    });
+    
+    // Reset form and show success message
+    setContactForm({
+      name: '',
+      email: '',
+      subject: '',
+      message: ''
+    });
+    
+    setFormSubmitted(true);
+    
+    // Hide success message after 5 seconds
+    setTimeout(() => {
+      setFormSubmitted(false);
+    }, 5000);
+  };
   
   // Simulate loading state on initial load
   useEffect(() => {
@@ -268,32 +346,67 @@ const AboutPage = ({ initialTab = 'history' }: AboutPageProps) => {
                     
                     <div className="contact-form-container">
                       <h3>Send Us a Message</h3>
-                      <form className="contact-form">
-                        <div className="form-group">
-                          <label htmlFor="name">Full Name</label>
-                          <input type="text" id="name" placeholder="Enter your name" />
+                      {formSubmitted ? (
+                        <div className="form-success-message">
+                          <Check size={24} />
+                          <p>Thank you for your message! We'll get back to you soon.</p>
                         </div>
-                        
-                        <div className="form-group">
-                          <label htmlFor="email">Email Address</label>
-                          <input type="email" id="email" placeholder="Enter your email" />
-                        </div>
-                        
-                        <div className="form-group">
-                          <label htmlFor="subject">Subject</label>
-                          <input type="text" id="subject" placeholder="What is this regarding?" />
-                        </div>
-                        
-                        <div className="form-group">
-                          <label htmlFor="message">Message</label>
-                          <textarea id="message" rows={5} placeholder="Type your message here"></textarea>
-                        </div>
-                        
-                        <button type="submit" className="send-button">
-                          <span>Send Message</span>
-                          <ChevronRight size={16} />
-                        </button>
-                      </form>
+                      ) : (
+                        <form className="contact-form" onSubmit={handleFormSubmit}>
+                          <div className={`form-group ${formErrors.name ? 'has-error' : ''}`}>
+                            <label htmlFor="name">Full Name</label>
+                            <input 
+                              type="text" 
+                              id="name" 
+                              placeholder="Enter your name" 
+                              value={contactForm.name}
+                              onChange={handleInputChange}
+                            />
+                            {formErrors.name && <span className="error-message">Please enter your name</span>}
+                          </div>
+                          
+                          <div className={`form-group ${formErrors.email ? 'has-error' : ''}`}>
+                            <label htmlFor="email">Email Address</label>
+                            <input 
+                              type="email" 
+                              id="email" 
+                              placeholder="Enter your email" 
+                              value={contactForm.email}
+                              onChange={handleInputChange}
+                            />
+                            {formErrors.email && <span className="error-message">Please enter a valid email</span>}
+                          </div>
+                          
+                          <div className={`form-group ${formErrors.subject ? 'has-error' : ''}`}>
+                            <label htmlFor="subject">Subject</label>
+                            <input 
+                              type="text" 
+                              id="subject" 
+                              placeholder="What is this regarding?" 
+                              value={contactForm.subject}
+                              onChange={handleInputChange}
+                            />
+                            {formErrors.subject && <span className="error-message">Please enter a subject</span>}
+                          </div>
+                          
+                          <div className={`form-group ${formErrors.message ? 'has-error' : ''}`}>
+                            <label htmlFor="message">Message</label>
+                            <textarea 
+                              id="message" 
+                              rows={5} 
+                              placeholder="Type your message here"
+                              value={contactForm.message}
+                              onChange={handleInputChange}
+                            ></textarea>
+                            {formErrors.message && <span className="error-message">Please enter your message</span>}
+                          </div>
+                          
+                          <button type="submit" className="send-button">
+                            <span>Send Message</span>
+                            <ChevronRight size={16} />
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </div>
                 </div>

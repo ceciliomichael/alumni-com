@@ -244,24 +244,18 @@ const GalleryPage = () => {
             </div>
           ) : (
             <div className="empty-gallery">
-              <div className="placeholder-grid">
-                {['Homecoming', 'Batch Reunions', 'Career Events', 'Awards', 'Community Service'].map((category, index) => (
-                  <div key={index} className="placeholder-item">
-                    <ImagePlaceholder
-                      shape={index % 3 === 0 ? 'square' : 'rectangle'}
-                      height="200px"
-                      color={getColorByCategory(category)}
-                      recommendedSize="800x600px"
-                      text={category.charAt(0)}
-                    />
-                    <div className="placeholder-info">
-                      <h3>{category}</h3>
-                      <p>Add photos to this album</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="empty-state-icon">
+                <Image size={64} strokeWidth={1} color="#64748b" />
               </div>
-              <p className="empty-message">No gallery images found. Photos will appear here once added.</p>
+              <h3 className="empty-state-title">No photos found</h3>
+              <p className="empty-state-message">
+                {searchTerm ? 
+                  "No photos match your search criteria. Try a different search term." : 
+                  activeAlbum !== 'all' ? 
+                    `There are no photos in the ${activeAlbum.replace('-', ' ')} album yet.` : 
+                    "There are no photos in the gallery yet. Check back later or upload photos yourself!"
+                }
+              </p>
             </div>
           )}
         </div>

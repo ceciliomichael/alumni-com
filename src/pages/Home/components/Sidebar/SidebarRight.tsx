@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Briefcase, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import ImagePlaceholder from '../../../../components/ImagePlaceholder';
+import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
 import './Sidebar.css';
+import { getUpcomingEvents, initializeEventData } from '../../../../pages/Admin/services/localStorage/eventService';
+import { getActiveJobs, initializeJobData } from '../../../../pages/Admin/services/localStorage/jobService';
+import { Event as EventType } from '../../../../pages/Admin/services/localStorage/eventService';
+import { Job as JobType } from '../../../../pages/Admin/services/localStorage/jobService';
 
 interface Event {
   id: string;
@@ -21,6 +25,58 @@ interface Job {
 const SidebarRight = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [jobOpportunities, setJobOpportunities] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load data on component mount
+  useEffect(() => {
+    // Initialize data stores if they don't exist
+    initializeEventData();
+    initializeJobData();
+    
+    loadData();
+    
+    // Listen for storage events to refresh data when it changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'events' || e.key === 'jobs') {
+        loadData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const loadData = () => {
+    setLoading(true);
+    
+    // Get upcoming events
+    const events = getUpcomingEvents()
+      .filter(event => event.isApproved)
+      .slice(0, 3)
+      .map(event => ({
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        location: event.location
+      }));
+    
+    // Get active jobs
+    const jobs = getActiveJobs()
+      .filter(job => job.isApproved)
+      .slice(0, 3)
+      .map(job => ({
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        location: job.location
+      }));
+    
+    setUpcomingEvents(events);
+    setJobOpportunities(jobs);
+    setLoading(false);
+  };
 
   // Format date
   const formatDate = (dateStr: string) => {
@@ -46,16 +102,16 @@ const SidebarRight = () => {
         </div>
         
         <div className="sidebar-card-content">
-          {upcomingEvents.length === 0 ? (
+          {loading ? (
+            <div className="sidebar-loading">
+              <div className="sidebar-skeleton"></div>
+              <div className="sidebar-skeleton"></div>
+            </div>
+          ) : upcomingEvents.length === 0 ? (
             <div className="empty-content">
-              <Link to="/events">
-                <ImagePlaceholder
-                  shape="rectangle"
-                  height="120px"
-                  color="#0984e3"
-                  recommendedSize="800x400px"
-                />
-              </Link>
+              <div className="empty-content-image">
+                <Calendar size={32} color="#adb5bd" />
+              </div>
               <p className="no-items-message">No upcoming events</p>
             </div>
           ) : (
@@ -81,6 +137,13 @@ const SidebarRight = () => {
               ))}
             </ul>
           )}
+          
+          {upcomingEvents.length > 0 && (
+            <Link to="/events" className="view-all-button">
+              <span>View All Events</span>
+              <ArrowRight size={16} />
+            </Link>
+          )}
         </div>
       </div>
       
@@ -96,16 +159,16 @@ const SidebarRight = () => {
         </div>
         
         <div className="sidebar-card-content">
-          {jobOpportunities.length === 0 ? (
+          {loading ? (
+            <div className="sidebar-loading">
+              <div className="sidebar-skeleton"></div>
+              <div className="sidebar-skeleton"></div>
+            </div>
+          ) : jobOpportunities.length === 0 ? (
             <div className="empty-content">
-              <Link to="/jobs">
-                <ImagePlaceholder
-                  shape="square"
-                  height="100px"
-                  color="#00b894"
-                  recommendedSize="400x400px"
-                />
-              </Link>
+              <div className="empty-content-image">
+                <Briefcase size={32} color="#adb5bd" />
+              </div>
               <p className="no-items-message">No job opportunities</p>
             </div>
           ) : (

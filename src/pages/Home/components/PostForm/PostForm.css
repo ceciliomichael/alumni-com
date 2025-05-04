@@ -51,7 +51,7 @@
 }
 
 .post-form-card:hover .user-avatar {
-  transform: scale(1.05);
+  transform: none;
 }
 
 .user-avatar img {
@@ -130,6 +130,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-normal);
+  position: relative;
 }
 
 .post-action-btn:hover {
@@ -144,6 +145,17 @@
 
 .post-action-btn:hover svg {
   transform: scale(1.1);
+}
+
+.post-action-btn:hover::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary-color);
+  border-radius: 1px;
 }
 
 .post-form-submit {
@@ -239,10 +251,109 @@
   background-color: rgba(0, 0, 0, 0.8);
 }
 
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0 10px;
+}
+
+.image-preview {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.remove-image-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
 @media (min-width: 640px) {
   .post-form-footer {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
   }
+}
+
+.selected-feeling-display {
+  margin-top: 0.75rem;
+  padding: 0 1rem;
+}
+
+.feeling-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-full);
+  background-color: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  position: relative;
+}
+
+.feeling-badge .feeling-emoji {
+  font-size: 1.125rem;
+}
+
+.feeling-badge .feeling-text {
+  font-weight: 500;
+}
+
+.remove-feeling-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  color: var(--text-secondary);
+  padding: 0;
+  margin-left: 0.5rem;
+}
+
+.remove-feeling-btn:hover {
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+}
+
+.post-action-btn.active {
+  color: var(--primary-color);
+  background-color: rgba(79, 70, 229, 0.08);
+}
+
+.selected-feeling-emoji {
+  font-size: 1.25rem;
 } 

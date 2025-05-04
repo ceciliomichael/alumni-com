@@ -36,6 +36,26 @@
   opacity: 0.1;
 }
 
+.sidebar-cover-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.sidebar-cover-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-profile-card:has(.sidebar-cover-photo)::before {
+  display: none;
+}
+
 .sidebar-profile-header {
   display: flex;
   flex-direction: column;
@@ -64,7 +84,7 @@
 }
 
 .profile-avatar-large:hover {
-  transform: scale(1.05);
+  transform: none;
 }
 
 .profile-avatar-large img {
@@ -472,6 +492,17 @@
   color: var(--text-muted);
 }
 
+.empty-content-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background-color: #f8f9fa;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
 .empty-spotlight {
   display: flex;
   flex-direction: column;
@@ -509,4 +540,42 @@
 
 .announcement-link:hover {
   transform: translateY(-2px);
+}
+
+/* Skeleton loading styles */
+.sidebar-loading {
+  padding: 0.5rem 0;
+}
+
+.sidebar-skeleton {
+  height: 80px;
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 } 

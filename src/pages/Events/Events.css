@@ -347,22 +347,36 @@
 
 /* Empty State Styling */
 .empty-events {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
 }
 
-.empty-message {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  padding: 1rem 2rem;
-  border-radius: var(--radius-full);
-  margin-top: 1rem;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.empty-state-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+}
+
+.empty-state-message {
+  color: #64748b;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
 /* Animations */

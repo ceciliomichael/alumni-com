@@ -22,11 +22,11 @@
 
 .home-layout {
   display: grid;
-  grid-template-columns: 280px minmax(550px, 680px) 300px;
+  grid-template-columns: 280px minmax(450px, 680px) 280px;
   gap: 1.75rem;
   position: relative;
   z-index: 1;
-  max-width: 1400px;
+  max-width: 1300px;
   width: 100%;
   margin: 0 auto;
   padding: 0 var(--spacing-4);
@@ -39,9 +39,10 @@
   justify-content: space-between;
   margin-bottom: 1.5rem;
   background-color: var(--background-card);
-  padding: 0.5rem;
+  padding: 0.75rem 1rem;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+  border: 1px solid rgba(229, 231, 235, 0.5);
 }
 
 .feed-tabs {
@@ -367,20 +368,21 @@
 
 @media (max-width: 1200px) {
   .home-layout {
-    grid-template-columns: 240px minmax(450px, 550px) 240px;
+    grid-template-columns: 240px minmax(400px, 600px) 240px;
     gap: 1.25rem;
+    padding: 0 var(--spacing-3);
   }
   
   .feed-tab {
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
-    padding: 0.5rem 0.75rem;
   }
 }
 
 @media (max-width: 992px) {
   .home-layout {
     grid-template-columns: 1fr;
-    max-width: 650px;
+    max-width: 680px;
   }
   
   .sidebar-left,
@@ -389,7 +391,7 @@
   }
   
   .main-content {
-    max-width: 100%;
+    width: 100%;
   }
 }
 
@@ -399,23 +401,25 @@
   }
   
   .home-layout {
-    padding: 0 var(--spacing-4);
+    padding: 0 var(--spacing-3);
   }
   
   .feed-header {
-    padding: 0.375rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
   }
   
   .feed-tab {
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
   }
   
   .feed-tab.active::after {
-    display: none;
+    width: 16px;
   }
   
   .feed-tab svg {
-    margin-right: 0;
+    width: 16px;
+    height: 16px;
   }
 } 

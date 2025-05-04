@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { User } from '../../types';
+import { Link, useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock } from 'lucide-react';
+import { loginUser } from '../Admin/services/localStorage/userService';
+import { User as ServiceUser } from '../Admin/services/localStorage/userService';
 import './Auth.css';
 
 interface LoginPageProps {
-  onLogin: (userData: User) => void;
+  onLoginSuccess: (user: ServiceUser) => void;
 }
 
-const LoginPage = ({ onLogin }: LoginPageProps) => {
+const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +17,7 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -59,19 +61,23 @@ const LoginPage = ({ onLogin }: LoginPageProps) => {
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Mock user data (to be replaced with actual API response)
-      const userData: User = {
-        id: '1',
-        name: 'John Doe',
-        email: formData.email,
-        batch: '2020',
-      };
+    // Login using localStorage service
+    const user = loginUser(formData.email, formData.password);
+    
+    if (user) {
+      // Successful login
+      // Call the handler passed from App.tsx
+      onLoginSuccess(user);
       
-      onLogin(userData);
       setIsSubmitting(false);
-    }, 1000);
+      navigate('/'); // Redirect to home page after login
+    } else {
+      // Failed login
+      setErrors({
+        password: 'Invalid credentials or your account is not yet approved'
+      });
+      setIsSubmitting(false);
+    }
   };
 
   return (

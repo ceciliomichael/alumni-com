@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react';
 import { User, Post } from '../../../../types';
-import { Image, Smile, Send } from 'lucide-react';
-import ImagePlaceholder from '../../../../components/ImagePlaceholder';
+import { Image, Smile, Send, X } from 'lucide-react';
+import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
 import './PostForm.css';
+import { addPost } from '../../../../pages/Admin/services/localStorage/postService';
+import FeelingSelector from './FeelingSelector';
+import { Feeling } from './types';
 
 interface PostFormProps {
   user: User | null;
@@ -13,7 +16,11 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
   const [content, setContent] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [showFeelingSelector, setShowFeelingSelector] = useState(false);
+  const [selectedFeeling, setSelectedFeeling] = useState<Feeling | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -29,31 +36,75 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
     setIsExpanded(true);
   };
 
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Convert images to base64
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (result) {
+          setSelectedImages(prev => [...prev, result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Clear the input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFeelingClick = () => {
+    setShowFeelingSelector(true);
+  };
+
+  const handleFeelingSelect = (feeling: Feeling | null) => {
+    setSelectedFeeling(feeling);
+  };
+
+  const closeFeelingSelector = () => {
+    setShowFeelingSelector(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!content.trim() || !user) {
+    if ((!content.trim() && selectedImages.length === 0) || !user) {
       return;
     }
     
     setIsSubmitting(true);
     
-    // Create a new post object
-    const newPost: Post = {
-      id: Date.now().toString(),
+    // Prepare post data
+    const postData = {
       userId: user.id,
       userName: user.name,
       userImage: user.profileImage,
       content: content.trim(),
-      createdAt: new Date().toISOString(),
-      likes: 0,
-      comments: [],
+      images: selectedImages,
+      feeling: selectedFeeling,
+      updatedAt: new Date().toISOString()
     };
     
-    // Simulate API delay
+    // Use postService to add the post
+    const newPost = addPost(postData);
+    
+    // Simulate API delay for UI feedback
     setTimeout(() => {
       onPostCreated(newPost);
       setContent('');
+      setSelectedImages([]);
+      setSelectedFeeling(null);
       setIsExpanded(false);
       setIsSubmitting(false);
       
@@ -65,6 +116,8 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
 
   const handleCancel = () => {
     setContent('');
+    setSelectedImages([]);
+    setSelectedFeeling(null);
     setIsExpanded(false);
     
     if (textareaRef.current) {
@@ -83,12 +136,9 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
               <img src={user.profileImage} alt={user.name || 'User Avatar'} />
             ) : (
               <ImagePlaceholder
-                shape="circle"
-                width="40px"
-                height="40px"
-                color="#fd79a8"
-                text={user.name ? user.name.charAt(0) : '?'}
-                recommendedSize="100x100px"
+                isAvatar
+                size="small"
+                name={user.name || ''}
               />
             )}
           </div>
@@ -96,24 +146,83 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
           <textarea
             ref={textareaRef}
             className="post-input"
-            placeholder="What's on your mind?"
+            placeholder={selectedFeeling 
+              ? `What's on your mind? You're feeling ${selectedFeeling.text}` 
+              : "What's on your mind?"}
             value={content}
             onChange={handleContentChange}
             onFocus={handleFocus}
             rows={isExpanded ? 3 : 1}
           />
         </div>
+
+        {/* Feeling Display */}
+        {selectedFeeling && (
+          <div className="selected-feeling-display">
+            <div className="feeling-badge">
+              <span className="feeling-emoji">{selectedFeeling.emoji}</span>
+              <span className="feeling-text">Feeling {selectedFeeling.text}</span>
+              <button 
+                type="button"
+                className="remove-feeling-btn"
+                onClick={() => setSelectedFeeling(null)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Image Preview */}
+        {selectedImages.length > 0 && (
+          <div className="image-preview-container">
+            {selectedImages.map((image, index) => (
+              <div key={index} className="image-preview">
+                <img src={image} alt={`Selected ${index + 1}`} />
+                <button 
+                  type="button" 
+                  className="remove-image-btn"
+                  onClick={() => handleRemoveImage(index)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         
         {isExpanded && (
           <div className="post-form-footer">
             <div className="post-form-actions">
-              <button type="button" className="post-action-btn">
+              <button 
+                type="button" 
+                className="post-action-btn"
+                onClick={handleImageClick}
+              >
                 <Image size={20} />
                 <span>Photo</span>
               </button>
               
-              <button type="button" className="post-action-btn">
-                <Smile size={20} />
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="file-input"
+                accept="image/*"
+                multiple
+                onChange={handleImageChange}
+                style={{ display: 'none' }}
+              />
+              
+              <button 
+                type="button" 
+                className={`post-action-btn ${selectedFeeling ? 'active' : ''}`}
+                onClick={handleFeelingClick}
+              >
+                {selectedFeeling ? (
+                  <span className="selected-feeling-emoji">{selectedFeeling.emoji}</span>
+                ) : (
+                  <Smile size={20} />
+                )}
                 <span>Feeling</span>
               </button>
             </div>
@@ -130,7 +239,7 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
               <button
                 type="submit"
                 className="btn btn-primary post-submit-btn"
-                disabled={!content.trim() || isSubmitting}
+                disabled={(content.trim() === '' && selectedImages.length === 0) || isSubmitting}
               >
                 {isSubmitting ? (
                   'Posting...'
@@ -145,6 +254,15 @@ const PostForm = ({ user, onPostCreated }: PostFormProps) => {
           </div>
         )}
       </form>
+
+      {/* Feeling Selector Modal */}
+      {showFeelingSelector && (
+        <FeelingSelector 
+          onSelectFeeling={handleFeelingSelect}
+          onClose={closeFeelingSelector}
+          selectedFeeling={selectedFeeling}
+        />
+      )}
     </div>
   );
 };

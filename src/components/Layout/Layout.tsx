@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { User } from '../../types';
 import { Home, Users, Image, Calendar, Info, Bell, LogOut, Menu, X, User as UserIcon, Briefcase } from 'lucide-react';
 import { useState } from 'react';
+import UserSearch from '../UserSearch/UserSearch';
+import ImagePlaceholder from '../ImagePlaceholder/ImagePlaceholder';
 import './Layout.css';
 
 interface LayoutProps {
@@ -94,32 +96,39 @@ const Layout = ({ children, isAuthenticated, user, onLogout }: LayoutProps) => {
             </ul>
           </nav>
 
-          <div className="user-menu">
-            <div className="notification-icon">
-              <Link to="/notifications" className="notification-button" title="Notifications">
-                <Bell size={20} />
-              </Link>
-            </div>
-            <div className="user-profile">
-              <div className="user-avatar">
-                {user?.profileImage ? (
-                  <img src={user.profileImage} alt={user.name} />
-                ) : (
-                  <div className="avatar-placeholder">{getInitial()}</div>
-                )}
+          <div className="header-right">
+            <UserSearch />
+            <div className="user-menu">
+              <div className="notification-icon">
+                <Link to="/notifications" className="notification-button" title="Notifications">
+                  <Bell size={20} />
+                </Link>
               </div>
-              <div className="user-dropdown">
-                <div className="user-info">
-                  <span className="user-name">{user?.name}</span>
-                  <span className="user-batch">Batch {user?.batch}</span>
+              <div className="user-profile">
+                <div className="user-avatar">
+                  {user?.profileImage ? (
+                    <img src={user.profileImage} alt={user.name} />
+                  ) : (
+                    <ImagePlaceholder 
+                      isAvatar 
+                      size="small" 
+                      name={user?.name || ''} 
+                    />
+                  )}
                 </div>
-                <div className="dropdown-menu">
-                  <Link to="/profile" className="dropdown-item">
-                    <UserIcon size={16} /> Profile
-                  </Link>
-                  <button onClick={onLogout} className="dropdown-item logout-button">
-                    <LogOut size={16} /> Sign Out
-                  </button>
+                <div className="user-dropdown">
+                  <div className="user-info">
+                    <span className="user-name">{user?.name}</span>
+                    <span className="user-batch">Batch {user?.batch}</span>
+                  </div>
+                  <div className="dropdown-menu">
+                    <Link to="/profile" className="dropdown-item">
+                      <UserIcon size={16} /> Profile
+                    </Link>
+                    <button onClick={onLogout} className="dropdown-item logout-button">
+                      <LogOut size={16} /> Sign Out
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

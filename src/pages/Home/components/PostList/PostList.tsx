@@ -1,19 +1,73 @@
-import { Post, Comment } from '../../../../types';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Heart, Send } from 'lucide-react';
-import { useState } from 'react';
-import ImagePlaceholder from '../../../../components/ImagePlaceholder';
+import { Post, Comment, Reply, User } from '../../../../types';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Heart, Send, CornerDownRight, Trash2, Copy, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
+import PostModal from '../PostModal/PostModal';
+import ConfirmDialog from '../../../../components/ConfirmDialog';
+import { deletePost } from '../../../Admin/services/localStorage/postService';
 import './PostList.css';
 
 interface PostListProps {
   posts: Post[];
+  userId: string | null;
+  currentUser: User | null;
   onLikePost: (postId: string) => void;
   onAddComment: (postId: string, comment: Comment) => void;
+  onAddReply: (postId: string, commentId: string, reply: Reply) => void;
+  onToggleCommentReaction: (postId: string, commentId: string) => void;
+  onDeletePost?: (postId: string) => void;
 }
 
-const PostList = ({ posts, onLikePost, onAddComment }: PostListProps) => {
-  const [expandedCommentPostId, setExpandedCommentPostId] = useState<string | null>(null);
+const PostList = ({ 
+  posts, 
+  userId, 
+  currentUser,
+  onLikePost, 
+  onAddComment,
+  onAddReply,
+  onToggleCommentReaction,
+  onDeletePost
+}: PostListProps) => {
+  const navigate = useNavigate();
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [replyingToComment, setReplyingToComment] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  
+  // State for modals and menus
+  const [selectedPostForModal, setSelectedPostForModal] = useState<Post | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [selectedPostForDeletion, setSelectedPostForDeletion] = useState<string | null>(null);
+  
+  // State for share functionality
+  const [shareTooltip, setShareTooltip] = useState<string | null>(null);
+  const shareTooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActiveMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // Clean up share tooltip timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (shareTooltipTimeoutRef.current) {
+        clearTimeout(shareTooltipTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Format date to a friendly format
   const formatDate = (date: Date | string) => {
@@ -48,32 +102,146 @@ const PostList = ({ posts, onLikePost, onAddComment }: PostListProps) => {
     });
   };
 
-  const handleToggleComments = (postId: string) => {
-    setExpandedCommentPostId(prev => prev === postId ? null : postId);
-  };
-
   const handleCommentChange = (postId: string, text: string) => {
     setCommentTexts(prev => ({ ...prev, [postId]: text }));
   };
 
+  const handleReplyChange = (commentId: string, text: string) => {
+    setReplyTexts(prev => ({ ...prev, [commentId]: text }));
+  };
+
   const handleSubmitComment = (postId: string) => {
-    if (!commentTexts[postId] || !commentTexts[postId].trim()) return;
+    if (!commentTexts[postId] || !commentTexts[postId].trim() || !userId || !currentUser) return;
     
     const newComment: Comment = {
       id: Date.now().toString(),
-      userName: 'You',
-      userImage: '',
+      postId,
+      userId,
+      userName: currentUser.name,
+      userImage: currentUser.profileImage,
       content: commentTexts[postId].trim(),
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
+      replies: [],
+      reactions: []
     };
     
     onAddComment(postId, newComment);
     setCommentTexts(prev => ({ ...prev, [postId]: '' }));
   };
-  
+
+  const handleSubmitReply = (postId: string, commentId: string) => {
+    if (!replyTexts[commentId] || !replyTexts[commentId].trim() || !userId || !currentUser) return;
+    
+    const newReply: Reply = {
+      id: Date.now().toString(),
+      commentId,
+      userId,
+      userName: currentUser.name,
+      userImage: currentUser.profileImage,
+      content: replyTexts[commentId].trim(),
+      createdAt: new Date().toISOString()
+    };
+    
+    onAddReply(postId, commentId, newReply);
+    setReplyTexts(prev => ({ ...prev, [commentId]: '' }));
+    setReplyingToComment(null); // Close reply form
+  };
+
   const handleLike = (postId: string) => {
+    if (!userId) return;
     setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
     onLikePost(postId);
+  };
+
+  const handleReplyToComment = (commentId: string) => {
+    if (replyingToComment === commentId) {
+      setReplyingToComment(null);
+    } else {
+      setReplyingToComment(commentId);
+    }
+  };
+
+  const handleToggleCommentReaction = (postId: string, commentId: string) => {
+    if (!userId) return;
+    onToggleCommentReaction(postId, commentId);
+  };
+  
+  // Handle sharing a post
+  const handleShare = (postId: string) => {
+    // Create a shareable link for the post
+    const shareableLink = `${window.location.origin}/post/${postId}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareableLink)
+      .then(() => {
+        // Show success tooltip for this post
+        setShareTooltip(postId);
+        
+        // Clear any existing timeout
+        if (shareTooltipTimeoutRef.current) {
+          clearTimeout(shareTooltipTimeoutRef.current);
+        }
+        
+        // Hide tooltip after 2 seconds
+        shareTooltipTimeoutRef.current = setTimeout(() => {
+          setShareTooltip(null);
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Failed to copy link: ', err);
+        alert('Failed to copy link to clipboard');
+      });
+  };
+
+  // Helper to check if a user has reacted to a comment
+  const hasUserReactedToComment = (reactions: any[], userId: string | null) => {
+    if (!userId || !reactions) return false;
+    return reactions.some(reaction => reaction.userId === userId);
+  };
+
+  // Add function to navigate to user profile
+  const navigateToUserProfile = (profileUserId: string) => {
+    navigate(`/profile/${profileUserId}`);
+  };
+  
+  // Add functions to handle post modal
+  const openPostModal = (post: Post, imageIndex: number = 0) => {
+    setSelectedPostForModal(post);
+    setSelectedImageIndex(imageIndex);
+  };
+  
+  const closePostModal = () => {
+    setSelectedPostForModal(null);
+  };
+
+  // Handle post menu toggling
+  const togglePostMenu = (postId: string) => {
+    setActiveMenu(activeMenu === postId ? null : postId);
+  };
+
+  // Handle post deletion
+  const handleDeletePost = (postId: string) => {
+    setSelectedPostForDeletion(postId);
+  };
+
+  const confirmDeletePost = () => {
+    if (selectedPostForDeletion) {
+      // Delete the post using the service
+      const success = deletePost(selectedPostForDeletion);
+      
+      if (success && onDeletePost) {
+        // Call the parent handler to update state
+        onDeletePost(selectedPostForDeletion);
+      }
+      
+      // Close the menu and reset state
+      setActiveMenu(null);
+      setSelectedPostForDeletion(null);
+    }
+  };
+
+  const cancelDeletePost = () => {
+    setSelectedPostForDeletion(null);
   };
 
   return (
@@ -87,37 +255,73 @@ const PostList = ({ posts, onLikePost, onAddComment }: PostListProps) => {
           <div key={post.id} className="post-card">
             <div className="post-header">
               <div className="post-author">
-                <div className="post-avatar">
+                <div 
+                  className="post-avatar"
+                  onClick={() => navigateToUserProfile(post.userId)}
+                  style={{ cursor: 'pointer' }}
+                >
                   {post.userImage ? (
                     <img src={post.userImage} alt={post.userName} />
                   ) : (
-                    <ImagePlaceholder
-                      shape="circle"
-                      width="45px"
-                      height="45px"
-                      color="#6c5ce7"
-                      text={post.userName.charAt(0)}
-                      recommendedSize="100x100px"
+                    <ImagePlaceholder 
+                      isAvatar 
+                      size="small" 
+                      name={post.userName} 
                     />
                   )}
                 </div>
                 <div className="post-info">
-                  <h3 className="post-author-name">{post.userName}</h3>
+                  <h3 
+                    className="post-author-name"
+                    onClick={() => navigateToUserProfile(post.userId)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {post.userName}
+                  </h3>
                   <p className="post-time">{formatDate(post.createdAt)}</p>
                 </div>
               </div>
-              <button className="post-menu-button">
-                <MoreHorizontal size={20} />
-              </button>
+              <div className="post-menu-container" ref={activeMenu === post.id ? menuRef : null}>
+                <button 
+                  className="post-menu-button"
+                  onClick={() => togglePostMenu(post.id)}
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+                {activeMenu === post.id && userId === post.userId && (
+                  <div className="post-menu">
+                    <button 
+                      className="post-menu-item delete"
+                      onClick={() => handleDeletePost(post.id)}
+                    >
+                      <Trash2 size={16} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="post-content">
               <p>{post.content}</p>
               
+              {post.feeling && (
+                <div className="post-feeling">
+                  <span className="feeling-emoji">{post.feeling.emoji}</span>
+                  <span className="feeling-text">feeling {post.feeling.text}</span>
+                </div>
+              )}
+              
               {post.images && post.images.length > 0 ? (
                 <div className="post-images">
                   {post.images.map((image, index) => (
-                    <img key={index} src={image} alt={`${post.userName}'s post image ${index + 1}`} />
+                    <img 
+                      key={index} 
+                      src={image} 
+                      alt={`${post.userName}'s post image ${index + 1}`} 
+                      onClick={() => openPostModal(post, index)}
+                      style={{ cursor: 'pointer' }}
+                    />
                   ))}
                 </div>
               ) : post.content.includes('image') && (
@@ -132,12 +336,16 @@ const PostList = ({ posts, onLikePost, onAddComment }: PostListProps) => {
             
             <div className="post-stats">
               <div className="post-likes">
-                {post.likes > 0 && (
+                {post.likedBy && post.likedBy.length > 0 && (
                   <>
                     <div className="like-icon-container">
-                      <Heart size={14} fill={likedPosts[post.id] ? "#ec4899" : "none"} stroke={likedPosts[post.id] ? "#ec4899" : "currentColor"} />
+                      <Heart 
+                        size={14} 
+                        fill={userId && post.likedBy?.includes(userId) ? "#ec4899" : "none"} 
+                        stroke={userId && post.likedBy?.includes(userId) ? "#ec4899" : "currentColor"} 
+                      />
                     </div>
-                    <span className="post-likes-count">{post.likes}</span>
+                    <span className="post-likes-count">{post.likedBy.length}</span>
                   </>
                 )}
               </div>
@@ -150,101 +358,271 @@ const PostList = ({ posts, onLikePost, onAddComment }: PostListProps) => {
             
             <div className="post-actions">
               <button
-                className={`post-action ${likedPosts[post.id] ? 'liked' : ''}`}
+                className={`post-action ${userId && post.likedBy?.includes(userId) ? 'liked' : ''}`}
                 onClick={() => handleLike(post.id)}
+                disabled={!userId}
               >
                 <Heart
                   size={18}
-                  fill={likedPosts[post.id] ? "#ec4899" : "none"}
-                  stroke={likedPosts[post.id] ? "#ec4899" : "currentColor"}
+                  fill={userId && post.likedBy?.includes(userId) ? "#ec4899" : "none"}
+                  stroke={userId && post.likedBy?.includes(userId) ? "#ec4899" : "currentColor"}
                 />
-                <span>{likedPosts[post.id] ? 'Liked' : 'Like'}</span>
+                <span>{userId && post.likedBy?.includes(userId) ? 'Liked' : 'Like'}</span>
               </button>
               <button
                 className="post-action"
-                onClick={() => handleToggleComments(post.id)}
+                onClick={() => openPostModal(post)}
               >
                 <MessageCircle size={18} />
                 <span>Comment</span>
               </button>
-              <button className="post-action">
-                <Share2 size={18} />
-                <span>Share</span>
+              <button 
+                className="post-action share-button"
+                onClick={() => handleShare(post.id)}
+              >
+                {shareTooltip === post.id ? (
+                  <>
+                    <Check size={18} />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 size={18} />
+                    <span>Share</span>
+                  </>
+                )}
               </button>
             </div>
             
-            {(expandedCommentPostId === post.id || post.comments.length > 0) && (
+            {/* Display comments section */}
+            {post.comments.length > 0 && (
               <div className="post-comments">
-                {post.comments.map((comment) => (
+                {/* Show only the most recent comment */}
+                {[...post.comments]
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .slice(0, 1)
+                  .map(comment => (
                   <div key={comment.id} className="comment">
-                    <div className="comment-avatar">
+                    <div 
+                      className="comment-avatar"
+                      onClick={() => navigateToUserProfile(comment.userId)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       {comment.userImage ? (
                         <img src={comment.userImage} alt={comment.userName} />
                       ) : (
-                        <ImagePlaceholder
-                          shape="circle"
-                          width="36px"
-                          height="36px"
-                          color="#e84393"
-                          text={comment.userName.charAt(0)}
-                          recommendedSize="60x60px"
+                        <ImagePlaceholder 
+                          isAvatar 
+                          size="small" 
+                          name={comment.userName} 
                         />
                       )}
                     </div>
                     <div className="comment-content">
                       <div className="comment-bubble">
-                        <h4 className="comment-author">{comment.userName}</h4>
+                        <h4 
+                          className="comment-author"
+                          onClick={() => navigateToUserProfile(comment.userId)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {comment.userName}
+                          {comment.userId === post.userId && (
+                            <span className="author-badge">Author</span>
+                          )}
+                        </h4>
                         <p className="comment-text">{comment.content}</p>
                       </div>
+                      
                       <div className="comment-actions">
-                        <button className="comment-action">Like</button>
-                        <button className="comment-action">Reply</button>
+                        <button 
+                          className={`comment-action ${hasUserReactedToComment(comment.reactions, userId) ? 'liked' : ''}`}
+                          onClick={() => handleToggleCommentReaction(post.id, comment.id)}
+                        >
+                          Like
+                          {comment.reactions && comment.reactions.length > 0 && (
+                            <span className="reaction-count">{comment.reactions.length}</span>
+                          )}
+                        </button>
+                        <button 
+                          className="comment-action"
+                          onClick={() => handleReplyToComment(comment.id)}
+                        >
+                          Reply
+                        </button>
                         <span className="comment-time">{formatDate(comment.createdAt)}</span>
                       </div>
+                      
+                      {/* Show the latest reply if it exists */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="comment-replies">
+                          {/* Only show the most recent reply */}
+                          {[...comment.replies]
+                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                            .slice(0, 1)
+                            .map(reply => (
+                              <div key={reply.id} className="comment-reply">
+                                <div 
+                                  className="reply-avatar"
+                                  onClick={() => navigateToUserProfile(reply.userId)}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {reply.userImage ? (
+                                    <img src={reply.userImage} alt={reply.userName} />
+                                  ) : (
+                                    <ImagePlaceholder 
+                                      isAvatar 
+                                      size="small" 
+                                      name={reply.userName} 
+                                    />
+                                  )}
+                                </div>
+                                <div className="reply-content">
+                                  <div className="reply-bubble">
+                                    <h4 
+                                      className="reply-author"
+                                      onClick={() => navigateToUserProfile(reply.userId)}
+                                    >
+                                      {reply.userName}
+                                      {reply.userId === post.userId && (
+                                        <span className="author-badge">Author</span>
+                                      )}
+                                    </h4>
+                                    <p className="reply-text">{reply.content}</p>
+                                  </div>
+                                  <div className="reply-actions">
+                                    <span className="reply-time">{formatDate(reply.createdAt)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                          ))}
+                          
+                          {comment.replies.length > 1 && (
+                            <button 
+                              className="view-more-replies" 
+                              onClick={() => openPostModal(post)}
+                            >
+                              View {comment.replies.length - 1} more {comment.replies.length - 1 === 1 ? 'reply' : 'replies'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Reply form */}
+                      {replyingToComment === comment.id && (
+                        <div className="reply-form">
+                          <div className="reply-input-container">
+                            <CornerDownRight size={16} />
+                            <input
+                              type="text"
+                              className="reply-input"
+                              placeholder="Write a reply..."
+                              value={replyTexts[comment.id] || ''}
+                              onChange={(e) => handleReplyChange(comment.id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSubmitReply(post.id, comment.id);
+                                }
+                              }}
+                            />
+                            <button
+                              className="reply-submit"
+                              onClick={() => handleSubmitReply(post.id, comment.id)}
+                              disabled={!replyTexts[comment.id] || !replyTexts[comment.id].trim()}
+                            >
+                              <Send size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
                 
-                {expandedCommentPostId === post.id && (
-                  <div className="comment-form">
-                    <div className="comment-avatar">
-                      <ImagePlaceholder
-                        shape="circle"
-                        width="36px"
-                        height="36px"
-                        color="#0984e3"
-                        text="Y"
-                        recommendedSize="60x60px"
-                      />
-                    </div>
-                    <div className="comment-input-container">
-                      <input
-                        type="text"
-                        className="comment-input"
-                        placeholder="Write a comment..."
-                        value={commentTexts[post.id] || ''}
-                        onChange={(e) => handleCommentChange(post.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSubmitComment(post.id);
-                          }
-                        }}
-                      />
-                      <button 
-                        className="comment-submit"
-                        onClick={() => handleSubmitComment(post.id)}
-                        disabled={!commentTexts[post.id] || !commentTexts[post.id].trim()}
-                      >
-                        <Send size={16} />
-                      </button>
-                    </div>
+                {/* View more comments button */}
+                {post.comments.length > 1 && (
+                  <div className="view-more-comments">
+                    <button 
+                      className="view-more-button"
+                      onClick={() => openPostModal(post)}
+                    >
+                      View all {post.comments.length} comments
+                    </button>
                   </div>
                 )}
               </div>
             )}
+            
+            {/* Comment form */}
+            <div className="post-comment-form">
+              <div className="comment-form">
+                <div className="comment-avatar">
+                  {currentUser && currentUser.profileImage ? (
+                    <img src={currentUser.profileImage} alt={currentUser.name} />
+                  ) : (
+                    <ImagePlaceholder
+                      isAvatar
+                      size="small"
+                      name={currentUser ? currentUser.name : ""}
+                    />
+                  )}
+                </div>
+                <div className="comment-input-container">
+                  <input
+                    type="text"
+                    className="comment-input"
+                    placeholder="Write a comment..."
+                    value={commentTexts[post.id] || ''}
+                    onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitComment(post.id);
+                      }
+                    }}
+                  />
+                  <button
+                    className="comment-submit"
+                    onClick={() => handleSubmitComment(post.id)}
+                    disabled={!commentTexts[post.id] || !commentTexts[post.id].trim()}
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         ))
       )}
+      
+      {/* Post Modal */}
+      {selectedPostForModal && (
+        <PostModal 
+          post={selectedPostForModal}
+          selectedImageIndex={selectedImageIndex}
+          onClose={closePostModal}
+          currentUser={currentUser}
+          userId={userId}
+          onLikePost={onLikePost}
+          onAddComment={onAddComment}
+          onAddReply={onAddReply}
+          onToggleCommentReaction={onToggleCommentReaction}
+          onDeletePost={onDeletePost}
+          navigateToUserProfile={navigateToUserProfile}
+        />
+      )}
+      
+      {/* Confirmation Dialog */}
+      <ConfirmDialog 
+        isOpen={selectedPostForDeletion !== null}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDeletePost}
+        onCancel={cancelDeletePost}
+        variant="danger"
+      />
     </div>
   );
 };

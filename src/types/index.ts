@@ -4,6 +4,25 @@ export interface User {
   email: string;
   batch: string;
   profileImage?: string;
+  coverPhoto?: string;
+  bio?: string;
+  job?: string;
+  company?: string;
+  location?: string;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    website?: string;
+  };
+  following?: string[]; // IDs of users this user follows
+  followers?: string[]; // IDs of users following this user
+  officerPosition?: {
+    title: string;
+    startDate: string;
+    endDate?: string;
+    batchYear?: string;
+  };
+  showOfficerInfo?: boolean; // Whether to display officer information on profile
 }
 
 export interface AuthState {
@@ -20,8 +39,12 @@ export interface Post {
   userImage?: string;
   content: string;
   images?: string[];
+  feeling?: {
+    emoji: string;
+    text: string;
+  };
   createdAt: string;
-  likes: number;
+  likedBy: string[];
   comments: Comment[];
 }
 
@@ -33,6 +56,24 @@ export interface Comment {
   userImage?: string;
   content: string;
   createdAt: string;
+  replies: Reply[];
+  reactions: CommentReaction[];
+}
+
+export interface Reply {
+  id: string;
+  commentId: string;
+  userId: string;
+  userName: string;
+  userImage?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CommentReaction {
+  userId: string;
+  userName: string;
+  type: 'like';
 }
 
 export interface Event {
@@ -70,4 +111,59 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+}
+
+// Admin types
+export interface AdminUser {
+  id: string;
+  username: string;
+  password: string; // hashed in real implementation
+  name: string;
+  role: 'admin' | 'super_admin';
+}
+
+export interface AlumniRecord {
+  id: string;
+  name: string;
+  email: string;
+  batch: string;
+  isActive: boolean;
+  dateRegistered: string;
+  position?: string;
+  profileImage?: string;
+  userId?: string;
+  // other alumni details
+}
+
+export interface OfficerPosition {
+  id: string;
+  title: string;
+  alumniId: string;
+  batchYear?: string;
+  startDate: string;
+  endDate?: string;
+}
+
+export interface JobPosting {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  requirements: string;
+  contactEmail: string;
+  postedDate: string;
+  isApproved: boolean;
+  postedBy: string;
+}
+
+export interface GalleryPost {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  event?: string;
+  postedDate: string;
+  isApproved: boolean;
+  postedBy: string;
 } 

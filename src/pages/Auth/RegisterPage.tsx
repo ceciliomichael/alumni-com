@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { UserPlus, Mail, Lock, User, GraduationCap } from 'lucide-react';
+import { useState, ChangeEvent, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserPlus, Mail, Lock, User, GraduationCap, Camera, Image } from 'lucide-react';
+import { registerUser } from '../Admin/services/localStorage/userService';
 import './Auth.css';
 
 const RegisterPage = () => {
@@ -12,9 +13,12 @@ const RegisterPage = () => {
     confirmPassword: '',
   });
   
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,6 +33,164 @@ const RegisterPage = () => {
         ...prev,
         [name]: '',
       }));
+    }
+  };
+
+  // Function to crop image to desired aspect ratio
+  const cropImage = (imageData: string, type: 'profile' | 'cover'): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject('Could not get canvas context');
+          return;
+        }
+        
+        let width, height, sourceX, sourceY, sourceWidth, sourceHeight;
+        
+        if (type === 'profile') {
+          // For profile images, crop to square (1:1 aspect ratio)
+          if (img.width > img.height) {
+            // Landscape image - crop sides
+            sourceWidth = img.height;
+            sourceHeight = img.height;
+            sourceX = (img.width - img.height) / 2;
+            sourceY = 0;
+          } else {
+            // Portrait or square image - crop top/bottom
+            sourceWidth = img.width;
+            sourceHeight = img.width;
+            sourceX = 0;
+            sourceY = (img.height - img.width) / 2;
+          }
+          
+          // Set canvas size to appropriate dimensions (max 400x400)
+          const maxSize = 400;
+          width = Math.min(sourceWidth, maxSize);
+          height = width;
+        } else {
+          // For cover photos, crop to 3:1 aspect ratio
+          const targetRatio = 3/1;
+          
+          if (img.width / img.height > targetRatio) {
+            // If image is wider than target ratio, crop sides
+            sourceHeight = img.height;
+            sourceWidth = img.height * targetRatio;
+            sourceX = (img.width - sourceWidth) / 2;
+            sourceY = 0;
+          } else {
+            // If image is taller than target ratio, crop top/bottom
+            sourceWidth = img.width;
+            sourceHeight = img.width / targetRatio;
+            sourceX = 0;
+            sourceY = (img.height - sourceHeight) / 2;
+          }
+          
+          // Set canvas size to appropriate dimensions (max 800px width)
+          const maxWidth = 800;
+          width = Math.min(sourceWidth, maxWidth);
+          height = width / targetRatio;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw cropped image to canvas
+        ctx.drawImage(
+          img,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, width, height
+        );
+        
+        // Convert canvas to data URL
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        resolve(croppedDataUrl);
+      };
+      
+      img.onerror = () => {
+        reject('Error loading image');
+      };
+      
+      img.src = imageData;
+    });
+  };
+
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors(prev => ({
+        ...prev,
+        [type === 'profile' ? 'profileImage' : 'coverPhoto']: 'Image size should be less than 2MB'
+      }));
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({
+        ...prev,
+        [type === 'profile' ? 'profileImage' : 'coverPhoto']: 'Only image files are allowed'
+      }));
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        if (typeof reader.result === 'string') {
+          try {
+            // Crop the image
+            const croppedImage = await cropImage(reader.result, type);
+            
+            if (type === 'profile') {
+              setProfileImage(croppedImage);
+              // Clear error
+              if (errors.profileImage) {
+                setErrors(prev => {
+                  const newErrors = { ...prev };
+                  delete newErrors.profileImage;
+                  return newErrors;
+                });
+              }
+            } else {
+              setCoverPhoto(croppedImage);
+              // Clear error
+              if (errors.coverPhoto) {
+                setErrors(prev => {
+                  const newErrors = { ...prev };
+                  delete newErrors.coverPhoto;
+                  return newErrors;
+                });
+              }
+            }
+          } catch (err) {
+            setErrors(prev => ({
+              ...prev,
+              [type === 'profile' ? 'profileImage' : 'coverPhoto']: 'Error processing image'
+            }));
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setErrors(prev => ({
+        ...prev,
+        [type === 'profile' ? 'profileImage' : 'coverPhoto']: 'Error reading file'
+      }));
+    }
+  };
+
+  const removeImage = (type: 'profile' | 'cover') => {
+    if (type === 'profile') {
+      setProfileImage(null);
+    } else {
+      setCoverPhoto(null);
     }
   };
 
@@ -74,34 +236,58 @@ const RegisterPage = () => {
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    // Register user using our localStorage service
+    const userData = {
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      batch: formData.batch,
+      profileImage: profileImage || undefined,
+      coverPhoto: coverPhoto || undefined,
+      // Initialize with empty values for optional fields
+      bio: '',
+      job: '',
+      company: '',
+      location: '',
+      socialLinks: {
+        linkedin: '',
+        twitter: '',
+        website: ''
+      }
+    };
+    
+    const newUser = registerUser(userData);
+    
+    if (newUser) {
+      // Registration successful
       setIsSubmitting(false);
       setRegistrationSuccess(true);
-    }, 1000);
+    } else {
+      // Email already exists
+      setErrors(prev => ({
+        ...prev,
+        email: 'Email is already registered'
+      }));
+      setIsSubmitting(false);
+    }
   };
 
   if (registrationSuccess) {
     return (
-      <div className="auth-container">
-        <div className="auth-wrapper">
-          <div className="auth-card">
-            <div className="auth-logo">
-              <img src="/images/alumni-conlogo.png" alt="IMA Alumni Logo" />
-            </div>
-            
-            <div className="success-card">
-              <div className="success-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="40" cy="40" r="40" fill="#10b981" fillOpacity="0.1" />
-                  <path d="M25 40L35 50L55 30" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <h2>Registration Successful!</h2>
-              <p>Your registration has been submitted successfully. Please wait for the admin or batch president approval.</p>
-              <Link to="/login" className="btn btn-primary">Back to Login</Link>
-            </div>
+      <div className="auth-container success-container">
+        <div className="success-card">
+          <div className="auth-logo">
+            <img src="/images/alumni-conlogo.png" alt="IMA Alumni Logo" />
           </div>
+          <div className="success-icon">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="40" cy="40" r="40" fill="#10b981" fillOpacity="0.1" />
+              <path d="M25 40L35 50L55 30" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h2>Registration Successful!</h2>
+          <p>Your registration has been submitted successfully. Please wait for the admin or batch president approval.</p>
+          <Link to="/login" className="btn btn-primary">Back to Login</Link>
         </div>
       </div>
     );
@@ -125,6 +311,68 @@ const RegisterPage = () => {
             </div>
             
             <form className="auth-form" onSubmit={handleSubmit}>
+              <div className="profile-images-section">
+                <div className="form-group">
+                  <label className="form-label">Profile Photo</label>
+                  <div className="image-upload-container">
+                    {profileImage ? (
+                      <div className="image-preview">
+                        <img src={profileImage} alt="Profile preview" />
+                        <button 
+                          type="button" 
+                          className="remove-image" 
+                          onClick={() => removeImage('profile')}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="upload-label">
+                        <Camera size={20} />
+                        <span>Upload Profile Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageChange(e, 'profile')}
+                          className="hidden-input"
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {errors.profileImage && <div className="form-error">{errors.profileImage}</div>}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Cover Photo</label>
+                  <div className="image-upload-container cover-upload">
+                    {coverPhoto ? (
+                      <div className="image-preview cover-preview">
+                        <img src={coverPhoto} alt="Cover preview" />
+                        <button 
+                          type="button" 
+                          className="remove-image" 
+                          onClick={() => removeImage('cover')}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="upload-label">
+                        <Image size={20} />
+                        <span>Upload Cover Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageChange(e, 'cover')}
+                          className="hidden-input"
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {errors.coverPhoto && <div className="form-error">{errors.coverPhoto}</div>}
+                </div>
+              </div>
+
               <div className="form-group">
                 <label htmlFor="name" className="form-label">Full Name</label>
                 <div className="input-group">
@@ -229,23 +477,14 @@ const RegisterPage = () => {
               </button>
               
               <div className="auth-footer">
-                <p>
-                  Already have an account?{' '}
-                  <Link to="/login" className="auth-link">Login</Link>
-                </p>
+                <p>Already have an account? <Link to="/login" className="auth-link">Login</Link></p>
               </div>
             </form>
           </div>
         </div>
         
         <div className="auth-illustration">
-          <div className="illustration-content">
-            <h2>Join the Community</h2>
-            <p>Connect with classmates, explore events, and stay updated on announcements.</p>
-            <div className="illustration-image">
-              <img src="/images/register-illustration.svg" alt="Join the Alumni Community" />
-            </div>
-          </div>
+          <img src="/images/register-illustration.svg" alt="Join the Alumni Community" />
         </div>
       </div>
     </div>

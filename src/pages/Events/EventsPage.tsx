@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Filter, ChevronDown, Search, Zap } from 'lucide-react';
+// Use the same service as Admin for consistency (adjust path if needed)
+import { getAllEvents, Event as EventType } from '../Admin/services/localStorage/eventService'; 
 import ImagePlaceholder from '../../components/ImagePlaceholder';
 import './Events.css';
 
+// Remove the local EventType interface, we imported the shared one
+/*
 interface EventType {
   id: string;
   title: string;
@@ -11,28 +15,77 @@ interface EventType {
   location: string;
   image?: string;
 }
+*/
 
 const EventsPage = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'upcoming' | 'past'>('all');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start loading initially
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Simulate loading state on initial load
+  const [allApprovedEvents, setAllApprovedEvents] = useState<EventType[]>([]); // Store all *approved* events
+
+  // Fetch and filter events on initial load
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
+    try {
+      const fetchedEvents = getAllEvents();
+      const approvedEvents = fetchedEvents.filter(event => event.isApproved);
+      setAllApprovedEvents(approvedEvents);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setAllApprovedEvents([]); // Set to empty on error
+    } finally {
+      // Simulate loading time if needed, or just set loading false
+      const timer = setTimeout(() => setIsLoading(false), 500); // Shorter delay now
+      return () => clearTimeout(timer);
+      // setIsLoading(false); // Alternatively, remove simulation
+    }
   }, []);
 
-  // Empty placeholder events
-  const eventsCategories = [
-    { title: 'Alumni Homecoming', color: '#4f46e5', date: 'September 15, 2023', time: '2:00 PM', location: 'Main Campus Auditorium' },
-    { title: 'Career Fair', color: '#8b5cf6', date: 'October 5, 2023', time: '10:00 AM', location: 'Innovation Center' },
-    { title: 'Class Reunion', color: '#ec4899', date: 'November 20, 2023', time: '6:00 PM', location: 'Grand Ballroom' }
-  ];
+  // Filter events based on search term AND active tab
+  const filteredEvents = allApprovedEvents.filter(event => {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+
+    // Tab filtering
+    let tabMatch = false;
+    if (activeTab === 'all') {
+      tabMatch = true;
+    } else if (activeTab === 'upcoming') {
+      tabMatch = eventDate >= now;
+    } else if (activeTab === 'past') {
+      tabMatch = eventDate < now;
+    }
+
+    // Search term filtering
+    const searchMatch = searchTerm === '' || 
+      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchTerm.toLowerCase()); // Added description search
+
+    return tabMatch && searchMatch;
+  }).sort((a, b) => { // Sort results, upcoming first, then past descending
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    if (activeTab === 'past') {
+      return dateB - dateA; // Most recent past first
+    }
+    return dateA - dateB; // Earliest upcoming first
+  });
+
+  // Helper function to format date/time if needed (example)
+  const formatEventDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { 
+      year: 'numeric', month: 'long', day: 'numeric' 
+    });
+  };
+
+  const formatEventTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString(undefined, { 
+      hour: 'numeric', minute: '2-digit', hour12: true 
+    });
+  };
 
   return (
     <div className="events-page">
@@ -46,6 +99,8 @@ const EventsPage = () => {
               <h1>Alumni Events</h1>
             </div>
             
+            {/* Filter dropdown - Functionality TBD */}
+            {/* 
             <div className="events-filter-wrapper">
               <div className="filter-dropdown">
                 <button className="filter-button">
@@ -55,6 +110,7 @@ const EventsPage = () => {
                 </button>
               </div>
             </div>
+            */}
           </div>
           
           <div className="events-controls">
@@ -62,7 +118,7 @@ const EventsPage = () => {
               <Search size={18} className="search-icon" />
               <input
                 type="text"
-                placeholder="Search events by title or location..."
+                placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
@@ -70,6 +126,7 @@ const EventsPage = () => {
             </div>
             
             <div className="events-tabs">
+              {/* Tabs remain the same */}
               <button 
                 className={`events-tab ${activeTab === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveTab('all')}
@@ -95,51 +152,73 @@ const EventsPage = () => {
           </div>
 
           <div className="events-section">
-            <h2>Activities & Events</h2>
+            <h2>
+              {activeTab === 'upcoming' ? 'Upcoming Activities & Events' : 
+               activeTab === 'past' ? 'Past Activities & Events' : 
+               'All Activities & Events'}
+            </h2>
             
             {isLoading ? (
               <div className="loading-events">
+                {/* Skeleton remains the same */}
                 <div className="events-skeleton-grid">
                   {[1, 2, 3].map((item) => (
                     <div key={item} className="event-skeleton-item"></div>
                   ))}
                 </div>
               </div>
-            ) : (
-              <div className="empty-events">
+            ) : filteredEvents.length > 0 ? (
                 <div className="events-grid">
-                  {eventsCategories.map((event, index) => (
-                    <div key={index} className="event-card">
+                {filteredEvents.map(event => (
+                  <div key={event.id} className="event-card">
                       <div className="event-image">
-                        <ImagePlaceholder
-                          shape="rectangle"
-                          height="200px"
-                          color={event.color}
-                          recommendedSize="800x450px"
-                        />
+                      {event.coverImage ? (
+                        <img src={event.coverImage} alt={event.title} /> // Use coverImage
+                      ) : (
+                        // Use ImagePlaceholder component
+                        <ImagePlaceholder width="100%" height="200px" text={`${event.title} Event`} />
+                      )}
                       </div>
                       <div className="event-content">
                         <h3 className="event-title">{event.title}</h3>
+                        {/* Added description display */}
+                        <p className="event-description">{event.description}</p> 
                         <div className="event-details">
                           <div className="event-detail">
                             <Calendar size={14} />
-                            <span>{event.date}</span>
+                            {/* Use formatter */}
+                            <span>{formatEventDate(event.date)}</span> 
                           </div>
                           <div className="event-detail">
                             <Clock size={14} />
-                            <span>{event.time}</span>
+                             {/* Use formatter */}
+                            <span>{formatEventTime(event.date)}</span>
                           </div>
                           <div className="event-detail">
                             <MapPin size={14} />
                             <span>{event.location}</span>
                           </div>
                         </div>
-                        <p className="event-placeholder-text">Event details will appear here once added.</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="empty-message">No actual events found. Add events to see them here.</p>
+            ) : (
+              <div className="empty-events">
+                <div className="empty-state-icon">
+                  <Calendar size={64} strokeWidth={1} color="#64748b" />
+                </div>
+                <h3 className="empty-state-title">No events found</h3>
+                <p className="empty-state-message">
+                  {searchTerm ? 
+                    "No approved events match your search criteria. Try a different search term." : 
+                    activeTab === 'upcoming' ? 
+                      "There are no approved upcoming events scheduled at this time. Check back later!" :
+                      activeTab === 'past' ?
+                      "There are no approved past events to display." :
+                      "There are no approved events scheduled yet. Check back later for updates."
+                  }
+                </p>
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 import { User, UserCircle, Users, Calendar, Briefcase, BookOpen, Building, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { User as UserType } from '../../../../types';
+import ImagePlaceholder from '../../../../components/ImagePlaceholder/ImagePlaceholder';
 import './Sidebar.css';
 
 interface SidebarLeftProps {
@@ -26,11 +27,21 @@ const SidebarLeft = ({ user }: SidebarLeftProps) => {
     <div className="sidebar-container">
       <div className="sidebar-card user-profile-card">
         <div className="sidebar-profile-header">
+          {user.coverPhoto && (
+            <div className="sidebar-cover-photo">
+              <img src={user.coverPhoto} alt="Cover" />
+            </div>
+          )}
           <div className="profile-avatar-large">
             {user.profileImage ? (
               <img src={user.profileImage} alt={user.name || 'User Avatar'} />
             ) : (
-              <div className="avatar-placeholder-large">{user.name ? user.name.charAt(0) : '?'}</div>
+              <ImagePlaceholder 
+                isAvatar 
+                size="large" 
+                name={user.name || ''} 
+                className="avatar-placeholder-large"
+              />
             )}
           </div>
           <h2 className="sidebar-profile-name">{user.name || 'User'}</h2>

@@ -439,83 +439,36 @@
 
 /* Empty State Styling */
 .empty-gallery {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 0 2rem 0;
-}
-
-.placeholder-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
-  width: 100%;
-  margin-bottom: 2rem;
-}
-
-.placeholder-item {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  background-color: var(--background-card);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  animation: fadeInUp 0.5s ease-out forwards;
-  opacity: 0;
-}
-
-.placeholder-item:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.placeholder-item:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.placeholder-item:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.placeholder-item:nth-child(4) {
-  animation-delay: 0.4s;
-}
-
-.placeholder-item:nth-child(5) {
-  animation-delay: 0.5s;
-}
-
-.placeholder-item:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
-}
-
-.placeholder-info {
-  padding: 1rem;
-}
-
-.placeholder-info h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.placeholder-info p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-}
-
-.empty-message {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.9375rem;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  padding: 1rem 2rem;
-  border-radius: var(--radius-full);
+  padding: 4rem 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   margin-top: 1rem;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.empty-state-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.75rem 0;
+}
+
+.empty-state-message {
+  color: #64748b;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: 1rem;
 }
 
 /* Upload Modal Styles */

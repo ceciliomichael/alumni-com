@@ -671,4 +671,49 @@
   .timeline-marker {
     left: -1.5rem;
   }
+}
+
+/* Form Validation Styles */
+.form-group.has-error input,
+.form-group.has-error textarea {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Success Message Styles */
+.form-success-message {
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.form-success-message svg {
+  color: #22c55e;
+  margin-right: 12px;
+  min-width: 24px;
+}
+
+.form-success-message p {
+  margin: 0;
+  color: #166534;
+  font-weight: 500;
+}
+
+/* Focus styles */
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #4f46e5;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 } 

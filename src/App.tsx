@@ -12,123 +12,299 @@ import NotificationsPage from './pages/Notifications/NotificationsPage';
 import Layout from './components/Layout/Layout';
 import { User } from './types';
 
+// Import user service
+import { getCurrentUser as getStoredUser, logoutUser } from './pages/Admin/services/localStorage/userService';
+import { User as ServiceUser } from './pages/Admin/services/localStorage/userService';
+
+// Admin imports
+import AdminLoginPage from './pages/Admin/AdminLoginPage';
+import Dashboard from './pages/Admin/components/Dashboard/Dashboard';
+import { AdminAuthProvider, useAdminAuth } from './pages/Admin/context/AdminAuthContext';
+import { AlumniRecords, AlumniListByBatch, AlumniForm, AlumniView } from './pages/Admin/components/AlumniRecords';
+import PendingRegistrations from './pages/Admin/components/AlumniRecords/PendingRegistrations';
+import { AlumniOfficers, OfficerForm } from './pages/Admin/components/AlumniOfficers';
+import { EventManagement, EventForm } from './pages/Admin/components/Events';
+import { GalleryManagement, GalleryForm } from './pages/Admin/components/Gallery';
+import JobManagement from './pages/Admin/components/Jobs/JobManagement';
+import JobForm from './pages/Admin/components/Jobs/JobForm';
+import ContactMessages from './pages/Admin/components/ContactMessages/ContactMessages';
+import { initializeContactMessages } from './pages/Admin/services/localStorage/contactService';
+
+// Helper component for admin protected routes
+const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdminAuthenticated } = useAdminAuth();
+  return isAdminAuthenticated ? <>{children}</> : <Navigate to="/admin/login" />;
+};
+
+// Helper component for user protected routes
+const ProtectedRoute = ({ children, isAuthenticated, isLoading }: { children: React.ReactNode, isAuthenticated: boolean, isLoading: boolean }) => {
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+// Helper function to convert ServiceUser to User
+const convertUser = (serviceUser: ServiceUser | null): User | null => {
+  if (!serviceUser) return null;
+  
+  return {
+    id: serviceUser.id,
+    name: serviceUser.name,
+    email: serviceUser.email,
+    batch: serviceUser.batch || '',
+    profileImage: serviceUser.profileImage,
+    coverPhoto: serviceUser.coverPhoto,
+    bio: serviceUser.bio,
+    job: serviceUser.job,
+    company: serviceUser.company,
+    location: serviceUser.location,
+    socialLinks: serviceUser.socialLinks
+  };
+};
+
 function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  // Simulate authentication check
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
+  // Function to handle successful login
+  const handleLoginSuccess = (loggedInUser: ServiceUser) => {
+    setUser(convertUser(loggedInUser));
+    // We might still need isLoadingAuth logic if other async ops happen
+    // but setting user directly makes auth state immediate
+  };
+
+  // Function to refresh user data from localStorage
+  const refreshUserData = () => {
+    const currentUser = getStoredUser();
+    if (currentUser) {
+      setUser(convertUser(currentUser));
     }
+  };
+
+  // Check authentication on load
+  useEffect(() => {
+    refreshUserData();
+    setIsLoadingAuth(false);
   }, []);
 
-  // Mock login function for UI demonstration only
-  const handleLogin = (userObject: User) => {
-    setUser(userObject);
-    setIsAuthenticated(true);
-    localStorage.setItem('user', JSON.stringify(userObject));
-  };
+  // Add event listener for storage events to update user data when it changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // If the current user in localStorage was changed, refresh the user data
+      if (e.key === 'currentUser') {
+        refreshUserData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Initialize localStorage services
+  useEffect(() => {
+    // Initialize contact messages
+    initializeContactMessages();
+  }, []);
 
   // Logout function
   const handleLogout = () => {
+    logoutUser();
     setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user');
+    setIsLoadingAuth(false); // Explicitly set loading to false on logout
+    // Navigate to login? Optional: <Navigate to="/login" replace /> might be needed
   };
 
   return (
     <Router>
-      <Routes>
-        {/* Authentication Routes */}
-        <Route path="/login" element={
-          isAuthenticated ? <Navigate to="/" /> : <LoginPage onLogin={handleLogin} />
-        } />
-        <Route path="/register" element={
-          isAuthenticated ? <Navigate to="/" /> : <RegisterPage />
-        } />
+      <AdminAuthProvider>
+        <Routes>
+          {/* --- Authentication Routes --- */}
+          <Route path="/login" element={
+            !isLoadingAuth && user ? <Navigate to="/" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />
+          } />
+          <Route path="/register" element={
+            !isLoadingAuth && user ? <Navigate to="/" /> : <RegisterPage />
+          } />
 
-        {/* Main Navigation Routes */}
-        <Route path="/" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <HomePage user={user} /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Gallery Section */}
-        <Route path="/gallery" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <GalleryPage /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Events Section */}
-        <Route path="/events" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <EventsPage /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* About Us Section and Tabs */}
-        <Route path="/about" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <AboutPage /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        <Route path="/about/history" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <AboutPage initialTab="history" /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        <Route path="/about/vision" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <AboutPage initialTab="vision" /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        <Route path="/about/organization" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <AboutPage initialTab="organization" /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        <Route path="/about/contact" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <AboutPage initialTab="contact" /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Profile Section */}
-        <Route path="/profile" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <ProfilePage user={user} /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        <Route path="/profile/update" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <ProfilePage user={user} isEditing={true} /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Jobs Section - New */}
-        <Route path="/jobs" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <JobsPage /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Notifications Section - New */}
-        <Route path="/notifications" element={
-          <Layout isAuthenticated={isAuthenticated} user={user} onLogout={handleLogout}>
-            {isAuthenticated ? <NotificationsPage /> : <Navigate to="/login" />}
-          </Layout>
-        } />
-        
-        {/* Alumni Directory route removed based on diagram */}
-        
-        {/* Catch all other routes */}
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+          {/* --- User Protected Routes with Layout --- */}
+          <Route 
+            path="/"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <HomePage user={user} />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/gallery"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <GalleryPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/events"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <EventsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/jobs"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <JobsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/about"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <AboutPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          {/* Route for specific About tabs if needed - AboutPage needs to handle :tab param */}
+          <Route 
+            path="/about/:tab"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <AboutPage /> 
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/profile"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <ProfilePage key={user?.id + '_' + Date.now()} user={user} />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/profile/update"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <ProfilePage key={user?.id + '_edit_' + Date.now()} user={user} isEditing={true} />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/profile/:userId"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <ProfilePage key={'view_' + Date.now()} user={user} isViewingOtherUser={true} />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/notifications"
+            element={
+              <ProtectedRoute isAuthenticated={!!user} isLoading={isLoadingAuth}>
+                <Layout isAuthenticated={!!user} user={user} onLogout={handleLogout}>
+                  <NotificationsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* --- Admin Routes (Keep separate) --- */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={
+            <ProtectedAdminRoute><Dashboard /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-records" element={
+            <ProtectedAdminRoute><AlumniRecords /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-records/by-batch" element={
+            <ProtectedAdminRoute><AlumniListByBatch /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-records/add" element={
+            <ProtectedAdminRoute><AlumniForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-records/edit/:id" element={
+            <ProtectedAdminRoute><AlumniForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-records/view/:id" element={
+            <ProtectedAdminRoute><AlumniView /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/pending-registrations" element={
+            <ProtectedAdminRoute><PendingRegistrations /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-officers" element={
+            <ProtectedAdminRoute><AlumniOfficers /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-officers/add" element={
+            <ProtectedAdminRoute><OfficerForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/alumni-officers/edit/:id" element={
+            <ProtectedAdminRoute><OfficerForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/events" element={
+            <ProtectedAdminRoute><EventManagement /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/events/add" element={
+            <ProtectedAdminRoute><EventForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/events/edit/:id" element={
+            <ProtectedAdminRoute><EventForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/gallery" element={
+            <ProtectedAdminRoute><GalleryManagement /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/gallery/add" element={
+            <ProtectedAdminRoute><GalleryForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/gallery/edit/:id" element={
+            <ProtectedAdminRoute><GalleryForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/jobs" element={
+            <ProtectedAdminRoute><JobManagement /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/jobs/add" element={
+            <ProtectedAdminRoute><JobForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/jobs/edit/:id" element={
+            <ProtectedAdminRoute><JobForm /></ProtectedAdminRoute>
+          } />
+          <Route path="/admin/messages" element={
+            <ProtectedAdminRoute><ContactMessages /></ProtectedAdminRoute>
+          } />
+
+          {/* --- Catch-all Route --- */}
+          {/* If authenticated and route not found, redirect to home. Otherwise, redirect to login */}
+          <Route path="*" element={
+            isLoadingAuth ? <div>Loading...</div> : 
+            user ? <Navigate to="/" /> : <Navigate to="/login" />
+          } />
+
+        </Routes>
+      </AdminAuthProvider>
     </Router>
   );
 }

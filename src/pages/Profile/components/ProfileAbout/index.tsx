@@ -1,94 +1,86 @@
-import { LinkedinIcon, TwitterIcon, GlobeIcon, UserCircle } from 'lucide-react';
+import { Briefcase, Building, MapPin, Link, Github, Linkedin, Twitter } from 'lucide-react';
 import './styles.css';
 
+interface SocialLinks {
+  linkedin?: string;
+  twitter?: string;
+  website?: string;
+}
+
 interface ProfileAboutProps {
-  bio?: string;
-  job?: string;
-  company?: string;
-  location?: string;
-  socialLinks?: {
-    linkedin?: string;
-    twitter?: string;
-    website?: string;
-  };
+  bio: string;
+  job: string;
+  company: string;
+  location: string;
+  socialLinks: SocialLinks;
 }
 
 const ProfileAbout = ({ bio, job, company, location, socialLinks }: ProfileAboutProps) => {
+  const hasSocialLinks = socialLinks && (socialLinks.linkedin || socialLinks.twitter || socialLinks.website);
+  const hasWorkInfo = job || company;
+  const hasInfo = bio || hasWorkInfo || location || hasSocialLinks;
+
   return (
     <div className="profile-about">
-      <div className="about-section">
-        <div className="section-header">
-          <UserCircle size={20} />
-          <h3>About Me</h3>
-        </div>
-        <div className="section-content">
-          {bio ? (
-            <p>{bio}</p>
-          ) : (
-            <p className="empty-bio">No bio information available</p>
-          )}
-          
-          {(job || company || location) && (
-            <div className="info-items">
-              {job && (
-                <div className="info-item">
-                  <span className="info-label">Job Title:</span>
-                  <span className="info-value">{job}</span>
-                </div>
-              )}
-              
-              {company && (
-                <div className="info-item">
-                  <span className="info-label">Company:</span>
-                  <span className="info-value">{company}</span>
-                </div>
-              )}
-              
-              {location && (
-                <div className="info-item">
-                  <span className="info-label">Location:</span>
-                  <span className="info-value">{location}</span>
-                </div>
-              )}
+      <div className="section-header">
+        <h3>About</h3>
+      </div>
+      
+      {hasInfo ? (
+        <div className="about-content">
+          {bio && (
+            <div className="bio">
+              <p>{bio}</p>
             </div>
           )}
-        </div>
-      </div>
-
-      <div className="social-section">
-        <div className="section-header">
-          <GlobeIcon size={20} />
-          <h3>Connect With Me</h3>
-        </div>
-        <div className="section-content">
-          {socialLinks && (Object.values(socialLinks).some(link => link)) ? (
+          
+          <div className="details">
+            {hasWorkInfo && (
+              <div className="detail-item">
+                <Briefcase size={18} />
+                <div className="detail-text">
+                  <span>{job || ''}{job && company ? ' at ' : ''}{company || ''}</span>
+                </div>
+              </div>
+            )}
+            
+            {location && (
+              <div className="detail-item">
+                <MapPin size={18} />
+                <div className="detail-text">
+                  <span>{location}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {hasSocialLinks && (
             <div className="social-links">
               {socialLinks.linkedin && (
-                <a href={socialLinks.linkedin} className="social-link linkedin" target="_blank" rel="noopener noreferrer">
-                  <LinkedinIcon size={18} />
-                  <span>LinkedIn</span>
+                <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="social-link">
+                  <Linkedin size={18} />
                 </a>
               )}
               
               {socialLinks.twitter && (
-                <a href={socialLinks.twitter} className="social-link twitter" target="_blank" rel="noopener noreferrer">
-                  <TwitterIcon size={18} />
-                  <span>Twitter</span>
+                <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-link">
+                  <Twitter size={18} />
                 </a>
               )}
               
               {socialLinks.website && (
-                <a href={socialLinks.website} className="social-link website" target="_blank" rel="noopener noreferrer">
-                  <GlobeIcon size={18} />
-                  <span>Website</span>
+                <a href={socialLinks.website} target="_blank" rel="noopener noreferrer" className="social-link">
+                  <Link size={18} />
                 </a>
               )}
             </div>
-          ) : (
-            <p className="empty-social">No social links added yet</p>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="empty-state">
+          <p>No information available</p>
+        </div>
+      )}
     </div>
   );
 };
